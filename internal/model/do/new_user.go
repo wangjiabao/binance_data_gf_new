@@ -12,7 +12,7 @@ import (
 // NewUser is the golang structure of table new_user for DAO operations like Where/Data.
 type NewUser struct {
 	g.Meta              `orm:"table:new_user, do:true"`
-	Id                  interface{} // 用户id
+	Id                  interface{} // 用id
 	Address             interface{} // 用户address
 	ApiStatus           interface{} // api的可用状态：不可用2
 	ApiKey              interface{} // 用户币安apikey
@@ -25,4 +25,5 @@ type NewUser struct {
 	UpdatedAt           *gtime.Time //
 	BinanceId           interface{} //
 	NeedInit            interface{} //
+	Num                 interface{} //
 }

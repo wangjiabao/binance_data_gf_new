@@ -1560,22 +1560,27 @@ func (s *sBinanceTraderHistory) GetGlobalInfo(ctx context.Context) {
 	}
 }
 
+//// InitGlobalInfo 初始化信息
+//func (s *sBinanceTraderHistory) InitGlobalInfo(ctx context.Context) bool {
+//	var (
+//		err          error
+//		keyPositions []*entity.KeyPosition
+//	)
+//	err = g.Model("key_position").Ctx(ctx).Where("amount>", 0).Scan(&keyPositions)
+//	if nil != err {
+//		fmt.Println("龟兔，初始化仓位，数据库查询错误：", err)
+//		return false
+//	}
+//
+//	for _, vKeyPositions := range keyPositions {
+//		orderMap.Set(vKeyPositions.Key, vKeyPositions.Amount)
+//	}
+//
+//	return true
+//}
+
 // InitGlobalInfo 初始化信息
 func (s *sBinanceTraderHistory) InitGlobalInfo(ctx context.Context) bool {
-	//var (
-	//	err          error
-	//	keyPositions []*entity.KeyPosition
-	//)
-	//err = g.Model("key_position").Ctx(ctx).Where("amount>", 0).Scan(&keyPositions)
-	//if nil != err {
-	//	fmt.Println("龟兔，初始化仓位，数据库查询错误：", err)
-	//	return false
-	//}
-	//
-	//for _, vKeyPositions := range keyPositions {
-	//	orderMap.Set(vKeyPositions.Key, vKeyPositions.Amount)
-	//}
-
 	// 初始化，恢复仓位数据
 	var (
 		err   error
@@ -1767,6 +1772,11 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		if 1 == vTmpUserMap.NeedInit {
 			strUserId := strconv.FormatUint(uint64(vTmpUserMap.Id), 10)
 
+			if lessThanOrEqualZero(vTmpUserMap.Num, 0, 1e-7) {
+				fmt.Println("龟兔，新增用户，保证金系数错误：", vTmpUserMap)
+				continue
+			}
+
 			// 新增仓位
 			tmpTraderBaseMoney := baseMoneyGuiTu.Val()
 			if lessThanOrEqualZero(tmpTraderBaseMoney, 0, 1e-7) {
@@ -1803,6 +1813,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 				}
 			}
 
+			tmpUserBindTradersAmount *= vTmpUserMap.Num
 			if lessThanOrEqualZero(tmpUserBindTradersAmount, 0, 1e-7) {
 				fmt.Println("龟兔，新增用户，保证金不足为0：", tmpUserBindTradersAmount, vTmpUserMap.Id)
 				continue
@@ -2318,12 +2329,17 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 		globalUsers.Iterator(func(k interface{}, v interface{}) bool {
 			tmpUser := v.(*entity.NewUser)
 
+			if lessThanOrEqualZero(tmpUser.Num, 0, 1e-7) {
+				fmt.Println("龟兔，保证金系数错误：", tmpUser)
+				return true
+			}
+
 			var tmpUserBindTradersAmount float64
 			if !baseMoneyUserAllMap.Contains(int(tmpUser.Id)) {
 				fmt.Println("龟兔，保证金不存在：", tmpUser)
 				return true
 			}
-			tmpUserBindTradersAmount = baseMoneyUserAllMap.Get(int(tmpUser.Id)).(float64)
+			tmpUserBindTradersAmount = baseMoneyUserAllMap.Get(int(tmpUser.Id)).(float64) * tmpUser.Num
 
 			if lessThanOrEqualZero(tmpUserBindTradersAmount, 0, 1e-7) {
 				fmt.Println("龟兔，保证金不足为0：", tmpUserBindTradersAmount, tmpUser)
