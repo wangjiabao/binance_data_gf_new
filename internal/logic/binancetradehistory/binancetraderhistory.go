@@ -1687,8 +1687,29 @@ func (s *sBinanceTraderHistory) PullAndSetBaseMoneyNewGuiTuAndUser(ctx context.C
 	}
 	time.Sleep(300 * time.Millisecond)
 
+	var (
+		users []*entity.NewUser
+	)
+	err = g.Model("new_user").Ctx(ctx).
+		Where("api_status =? and bind_trader_status_tfi=? and is_dai=? and use_new_system=?", 1, 1, 1, 2).
+		Scan(&users)
+	if nil != err {
+		fmt.Println("龟兔，新增用户，数据库查询错误：", err)
+		return
+	}
+
+	tmpUserMap := make(map[uint]*entity.NewUser, 0)
+	for _, vUsers := range users {
+		tmpUserMap[vUsers.Id] = vUsers
+	}
+
 	globalUsers.Iterator(func(k interface{}, v interface{}) bool {
 		vGlobalUsers := v.(*entity.NewUser)
+
+		if _, ok := tmpUserMap[vGlobalUsers.Id]; !ok {
+			fmt.Println("龟兔，变更保证金，用户数据错误，数据库不存在：", vGlobalUsers)
+			return true
+		}
 
 		if 0 >= vGlobalUsers.BinanceId {
 			fmt.Println("龟兔，变更保证金，用户数据错误：", vGlobalUsers)
@@ -1711,12 +1732,13 @@ func (s *sBinanceTraderHistory) PullAndSetBaseMoneyNewGuiTuAndUser(ctx context.C
 				return true
 			}
 
+			tmp *= tmpUserMap[vGlobalUsers.Id].Num
 			if !baseMoneyUserAllMap.Contains(int(vGlobalUsers.Id)) {
-				fmt.Println("初始化成功保证金", vGlobalUsers, tmp)
+				fmt.Println("初始化成功保证金", vGlobalUsers, tmp, tmpUserMap[vGlobalUsers.Id].Num)
 				baseMoneyUserAllMap.Set(int(vGlobalUsers.Id), tmp)
 			} else {
 				if !IsEqual(tmp, baseMoneyUserAllMap.Get(int(vGlobalUsers.Id)).(float64)) {
-					fmt.Println("变更成功", int(vGlobalUsers.Id), tmp)
+					fmt.Println("变更成功", int(vGlobalUsers.Id), tmp, tmpUserMap[vGlobalUsers.Id].Num)
 					baseMoneyUserAllMap.Set(int(vGlobalUsers.Id), tmp)
 				}
 			}
@@ -1801,19 +1823,19 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 					fmt.Println("龟兔，新增用户，拉取保证金，转化失败：", err, vTmpUserMap)
 				}
 
+				tmp *= vTmpUserMap.Num
 				tmpUserBindTradersAmount = tmp
 				if !baseMoneyUserAllMap.Contains(int(vTmpUserMap.Id)) {
-					fmt.Println("新增用户，初始化成功保证金", vTmpUserMap, tmp)
+					fmt.Println("新增用户，初始化成功保证金", vTmpUserMap, tmp, vTmpUserMap.Num)
 					baseMoneyUserAllMap.Set(int(vTmpUserMap.Id), tmp)
 				} else {
 					if !IsEqual(tmp, baseMoneyUserAllMap.Get(int(vTmpUserMap.Id)).(float64)) {
-						fmt.Println("新增用户，变更成功", int(vTmpUserMap.Id), tmp)
+						fmt.Println("新增用户，变更成功", int(vTmpUserMap.Id), tmp, vTmpUserMap.Num)
 						baseMoneyUserAllMap.Set(int(vTmpUserMap.Id), tmp)
 					}
 				}
 			}
 
-			tmpUserBindTradersAmount *= vTmpUserMap.Num
 			if lessThanOrEqualZero(tmpUserBindTradersAmount, 0, 1e-7) {
 				fmt.Println("龟兔，新增用户，保证金不足为0：", tmpUserBindTradersAmount, vTmpUserMap.Id)
 				continue
@@ -2329,17 +2351,12 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 		globalUsers.Iterator(func(k interface{}, v interface{}) bool {
 			tmpUser := v.(*entity.NewUser)
 
-			if lessThanOrEqualZero(tmpUser.Num, 0, 1e-7) {
-				fmt.Println("龟兔，保证金系数错误：", tmpUser)
-				return true
-			}
-
 			var tmpUserBindTradersAmount float64
 			if !baseMoneyUserAllMap.Contains(int(tmpUser.Id)) {
 				fmt.Println("龟兔，保证金不存在：", tmpUser)
 				return true
 			}
-			tmpUserBindTradersAmount = baseMoneyUserAllMap.Get(int(tmpUser.Id)).(float64) * tmpUser.Num
+			tmpUserBindTradersAmount = baseMoneyUserAllMap.Get(int(tmpUser.Id)).(float64)
 
 			if lessThanOrEqualZero(tmpUserBindTradersAmount, 0, 1e-7) {
 				fmt.Println("龟兔，保证金不足为0：", tmpUserBindTradersAmount, tmpUser)
