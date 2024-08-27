@@ -66,6 +66,13 @@ var (
 			}
 			fmt.Println("初始化账户的现有仓位，带单员的账户币安id，ok")
 
+			// 初始化根据数据库现有人
+			if !serviceBinanceTrader.UpdateCoinInfo(ctx) {
+				fmt.Println("初始化币种失败，fail")
+				return nil
+			}
+			fmt.Println("初始化币种成功，ok")
+
 			// 拉龟兔的保证金
 			serviceBinanceTrader.PullAndSetBaseMoneyNewGuiTuAndUser(ctx)
 
@@ -81,11 +88,23 @@ var (
 			}
 			gtimer.AddSingleton(ctx, time.Second*30, handle2)
 
-			//// 15秒/次，测试
-			//handle3 := func(ctx context.Context) {
+			// 600秒/次，币种信息
+			handle3 := func(ctx context.Context) {
+				serviceBinanceTrader.UpdateCoinInfo(ctx)
+			}
+			gtimer.AddSingleton(ctx, time.Second*600, handle3)
+
+			// 100秒/次，仓位信息落库
+			handle4 := func(ctx context.Context) {
+				serviceBinanceTrader.UpdateKeyPosition(ctx)
+			}
+			gtimer.AddSingleton(ctx, time.Second*100, handle4)
+
+			// 15秒/次，测试
+			//handle5 := func(ctx context.Context) {
 			//	serviceBinanceTrader.GetGlobalInfo(ctx)
 			//}
-			//gtimer.AddSingleton(ctx, time.Second*15, handle3)
+			//gtimer.AddSingleton(ctx, time.Second*15, handle5)
 
 			// 任务1 同步订单
 			go func() {

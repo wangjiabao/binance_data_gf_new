@@ -18,4 +18,5 @@ type NewUserBindTraderTwo struct {
 	InitOrder uint        `json:"initOrder" ` // 绑定是否初始化仓位
 	CreatedAt *gtime.Time `json:"createdAt" ` // 创建时间
 	UpdatedAt *gtime.Time `json:"updatedAt" ` // 更新时间
+	Num       float64     `json:"num"       ` //
 }

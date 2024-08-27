@@ -20,7 +20,7 @@ type NewUserDao struct {
 
 // NewUserColumns defines and stores column names for table new_user.
 type NewUserColumns struct {
-	Id                  string // 用id
+	Id                  string // 用户id
 	Address             string // 用户address
 	ApiStatus           string // api的可用状态：不可用2
 	ApiKey              string // 用户币安apikey
@@ -34,6 +34,7 @@ type NewUserColumns struct {
 	BinanceId           string //
 	NeedInit            string //
 	Num                 string //
+	ReInit              string //
 }
 
 // newUserColumns holds the columns for table new_user.
@@ -52,6 +53,7 @@ var newUserColumns = NewUserColumns{
 	BinanceId:           "binance_id",
 	NeedInit:            "need_init",
 	Num:                 "num",
+	ReInit:              "re_init",
 }
 
 // NewNewUserDao creates and returns a new DAO object for table data access.

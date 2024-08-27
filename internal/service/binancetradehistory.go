@@ -19,6 +19,10 @@ type (
 		PullAndOrderNew(ctx context.Context, traderNum uint64, ipProxyUse int) (err error)
 		// GetGlobalInfo 获取全局测试数据
 		GetGlobalInfo(ctx context.Context)
+		// UpdateCoinInfo 初始化信息
+		UpdateCoinInfo(ctx context.Context) bool
+		// UpdateKeyPosition 初始化信息
+		UpdateKeyPosition(ctx context.Context) bool
 		// InitGlobalInfo 初始化信息
 		InitGlobalInfo(ctx context.Context) bool
 		// PullAndSetBaseMoneyNewGuiTuAndUser 拉取binance保证金数据
