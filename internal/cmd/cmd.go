@@ -88,11 +88,11 @@ var (
 			}
 			gtimer.AddSingleton(ctx, time.Second*30, handle2)
 
-			// 600秒/次，币种信息
+			// 300秒/次，币种信息
 			handle3 := func(ctx context.Context) {
 				serviceBinanceTrader.UpdateCoinInfo(ctx)
 			}
-			gtimer.AddSingleton(ctx, time.Second*600, handle3)
+			gtimer.AddSingleton(ctx, time.Second*300, handle3)
 
 			// 100秒/次，仓位信息落库
 			handle4 := func(ctx context.Context) {

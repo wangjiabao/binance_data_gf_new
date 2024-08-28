@@ -1620,7 +1620,7 @@ func (s *sBinanceTraderHistory) UpdateKeyPosition(ctx context.Context) bool {
 	var (
 		keyPositions []*entity.KeyPosition
 	)
-	err = g.Model("key_position").Ctx(ctx).Where("amount>", 0).Scan(&keyPositions)
+	err = g.Model("key_position").Ctx(ctx).Scan(&keyPositions)
 	if nil != err {
 		fmt.Println("龟兔，初始化仓位，数据库查询错误：", err)
 		return true
@@ -1629,6 +1629,11 @@ func (s *sBinanceTraderHistory) UpdateKeyPosition(ctx context.Context) bool {
 	keyPositionsMap := make(map[string]*entity.KeyPosition, 0)
 	for _, vKeyPositions := range keyPositions {
 		keyPositionsMap[vKeyPositions.Key] = vKeyPositions
+	}
+
+	_, err = g.Model("key_position").Ctx(ctx).Where("amount>", 0).Data("amount", 0).Update()
+	if nil != err {
+		fmt.Println("龟兔，key_position，数据库清0：", err)
 	}
 
 	for k, v := range keyPositionsNew {
@@ -1983,25 +1988,24 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 					orderInfoRes    *orderInfo
 				)
 				// 请求下单
-				//binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpInsertData.Symbol, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
-				//if nil != err {
-				//	fmt.Println(err)
-				//}
-
-				// todo 测试
-				binanceOrderRes = &binanceOrder{
-					OrderId:       1,
-					ExecutedQty:   quantity,
-					ClientOrderId: "",
-					Symbol:        "",
-					AvgPrice:      "",
-					CumQuote:      "",
-					Side:          "",
-					PositionSide:  "",
-					ClosePosition: false,
-					Type:          "",
-					Status:        "",
+				binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpInsertData.Symbol, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
+				if nil != err {
+					fmt.Println(err)
 				}
+
+				//binanceOrderRes = &binanceOrder{
+				//	OrderId:       1,
+				//	ExecutedQty:   quantity,
+				//	ClientOrderId: "",
+				//	Symbol:        "",
+				//	AvgPrice:      "",
+				//	CumQuote:      "",
+				//	Side:          "",
+				//	PositionSide:  "",
+				//	ClosePosition: false,
+				//	Type:          "",
+				//	Status:        "",
+				//}
 
 				// 下单异常
 				if 0 >= binanceOrderRes.OrderId {
@@ -2538,25 +2542,24 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						orderInfoRes    *orderInfo
 					)
 					// 请求下单
-					//binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpInsertData.Symbol.(string), side, orderType, positionSide, quantity, tmpUser.ApiKey, tmpUser.ApiSecret)
-					//if nil != err {
-					//	fmt.Println(err)
-					//}
-
-					// todo 测试
-					binanceOrderRes = &binanceOrder{
-						OrderId:       1,
-						ExecutedQty:   quantity,
-						ClientOrderId: "",
-						Symbol:        "",
-						AvgPrice:      "",
-						CumQuote:      "",
-						Side:          "",
-						PositionSide:  "",
-						ClosePosition: false,
-						Type:          "",
-						Status:        "",
+					binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpInsertData.Symbol.(string), side, orderType, positionSide, quantity, tmpUser.ApiKey, tmpUser.ApiSecret)
+					if nil != err {
+						fmt.Println(err)
 					}
+
+					//binanceOrderRes = &binanceOrder{
+					//	OrderId:       1,
+					//	ExecutedQty:   quantity,
+					//	ClientOrderId: "",
+					//	Symbol:        "",
+					//	AvgPrice:      "",
+					//	CumQuote:      "",
+					//	Side:          "",
+					//	PositionSide:  "",
+					//	ClosePosition: false,
+					//	Type:          "",
+					//	Status:        "",
+					//}
 
 					// 下单异常
 					if 0 >= binanceOrderRes.OrderId {
@@ -2753,26 +2756,25 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						orderInfoRes    *orderInfo
 					)
 					// 请求下单
-					//binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpUpdateData.Symbol.(string), side, orderType, positionSide, quantity, tmpUser.ApiKey, tmpUser.ApiSecret)
-					//if nil != err {
-					//	fmt.Println(err)
-					//	return
-					//}
-
-					// todo 测试
-					binanceOrderRes = &binanceOrder{
-						OrderId:       1,
-						ExecutedQty:   quantity,
-						ClientOrderId: "",
-						Symbol:        "",
-						AvgPrice:      "",
-						CumQuote:      "",
-						Side:          "",
-						PositionSide:  "",
-						ClosePosition: false,
-						Type:          "",
-						Status:        "",
+					binanceOrderRes, orderInfoRes, err = requestBinanceOrder(tmpUpdateData.Symbol.(string), side, orderType, positionSide, quantity, tmpUser.ApiKey, tmpUser.ApiSecret)
+					if nil != err {
+						fmt.Println(err)
+						return
 					}
+
+					//binanceOrderRes = &binanceOrder{
+					//	OrderId:       1,
+					//	ExecutedQty:   quantity,
+					//	ClientOrderId: "",
+					//	Symbol:        "",
+					//	AvgPrice:      "",
+					//	CumQuote:      "",
+					//	Side:          "",
+					//	PositionSide:  "",
+					//	ClosePosition: false,
+					//	Type:          "",
+					//	Status:        "",
+					//}
 
 					// 下单异常
 					if 0 >= binanceOrderRes.OrderId {
