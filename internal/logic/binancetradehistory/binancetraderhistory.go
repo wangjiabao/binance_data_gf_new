@@ -1554,7 +1554,7 @@ func (s *sBinanceTraderHistory) GetGlobalInfo(ctx context.Context) {
 	})
 
 	for _, vBinancePositionMap := range binancePositionMap {
-		if lessThanOrEqualZero(vBinancePositionMap.PositionAmount, 0, 1e-7) {
+		if IsEqual(vBinancePositionMap.PositionAmount, 0) {
 			continue
 		}
 
@@ -1917,7 +1917,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 			for _, vInsertData := range binancePositionMap {
 				// 一个新symbol通常3个开仓方向short，long，both，屏蔽一下未真实开仓的
 				tmpInsertData := vInsertData
-				if lessThanOrEqualZero(tmpInsertData.PositionAmount, 0, 1e-7) {
+				if IsEqual(tmpInsertData.PositionAmount, 0) {
 					continue
 				}
 
@@ -1940,13 +1940,21 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 				} else if "SHORT" == tmpInsertData.PositionSide {
 					positionSide = "SHORT"
 					side = "SELL"
+				} else if "BOTH" == tmpInsertData.PositionSide {
+					if math.Signbit(tmpInsertData.PositionAmount) {
+						positionSide = "SHORT"
+						side = "SELL"
+					} else {
+						positionSide = "LONG"
+						side = "BUY"
+					}
 				} else {
 					fmt.Println("龟兔，新增用户，无效信息，信息", vInsertData)
 					continue
 				}
-
+				tmpPositionAmount := math.Abs(tmpInsertData.PositionAmount)
 				// 本次 代单员币的数量 * (用户保证金/代单员保证金)
-				tmpQty = tmpInsertData.PositionAmount * tmpUserBindTradersAmount / tmpTraderBaseMoney // 本次开单数量
+				tmpQty = tmpPositionAmount * tmpUserBindTradersAmount / tmpTraderBaseMoney // 本次开单数量
 
 				// 精度调整
 				if 0 >= symbolsMap.Get(tmpInsertData.Symbol).(*entity.LhCoinSymbol).QuantityPrecision {
@@ -1975,7 +1983,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 					PositionSide:  positionSide,
 					Quantity:      quantityFloat,
 					Price:         0,
-					TraderQty:     tmpInsertData.PositionAmount,
+					TraderQty:     tmpPositionAmount,
 					OrderType:     orderType,
 					ClosePosition: "",
 					CumQuote:      0,
