@@ -60,11 +60,11 @@ var (
 			serviceBinanceTrader := service.BinanceTraderHistory()
 
 			// 初始化根据数据库现有人
-			if !serviceBinanceTrader.InitGlobalInfo(ctx) {
-				fmt.Println("初始化失败，fail")
-				return nil
-			}
-			fmt.Println("初始化账户的现有仓位，带单员的账户币安id，ok")
+			//if !serviceBinanceTrader.InitGlobalInfo(ctx) {
+			//	fmt.Println("初始化失败，fail")
+			//	return nil
+			//}
+			//fmt.Println("初始化账户的现有仓位，带单员的账户币安id，ok")
 
 			// 初始化根据数据库现有人
 			if !serviceBinanceTrader.UpdateCoinInfo(ctx) {
