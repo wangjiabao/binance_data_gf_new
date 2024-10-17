@@ -2039,6 +2039,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 						Proportion:    0,
 					})
 
+					fmt.Println(orderInfoRes)
 					continue
 				}
 
@@ -2593,6 +2594,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 							Proportion:    0,
 						})
 
+						fmt.Println(orderInfoRes)
 						return
 					}
 
@@ -2809,6 +2811,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 							Proportion:    0,
 						})
 
+						fmt.Println(orderInfoRes)
 						return // 返回
 					}
 
