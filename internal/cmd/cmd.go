@@ -106,10 +106,8 @@ var (
 			//}
 			//gtimer.AddSingleton(ctx, time.Second*15, handle5)
 
-			// 任务1 同步订单
-			go func() {
-				serviceBinanceTrader.PullAndOrderNewGuiTu(ctx)
-			}()
+			// 任务1 同步订单，死循环
+			serviceBinanceTrader.PullAndOrderNewGuiTu(ctx)
 
 			// 阻塞
 			select {}
