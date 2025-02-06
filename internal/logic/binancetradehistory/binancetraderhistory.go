@@ -1715,6 +1715,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 	// 第一遍比较，新增
 	for k, vTmpUserMap := range tmpUserMap {
 		if globalUsers.Contains(k) {
+			log.Println(vTmpUserMap, globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User))
 			// 变更可否开新仓
 			if 2 != vTmpUserMap.OpenStatus && 2 == globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User).OpenStatus {
 				log.Println("用户暂停:", vTmpUserMap)
