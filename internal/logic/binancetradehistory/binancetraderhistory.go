@@ -1713,22 +1713,21 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 	}
 
 	// 第一遍比较，新增
-	for k, vTmpUserMap := range tmpUserMap {
-		if globalUsers.Contains(k) {
-			log.Println(vTmpUserMap, globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User))
+	for _, vTmpUserMap := range users {
+		if globalUsers.Contains(vTmpUserMap.Id) {
 			// 变更可否开新仓
-			if 2 != vTmpUserMap.OpenStatus && 2 == globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User).OpenStatus {
+			if 2 != vTmpUserMap.OpenStatus && 2 == globalUsers.Get(vTmpUserMap.Id).(*entity.User).OpenStatus {
 				log.Println("用户暂停:", vTmpUserMap)
-				globalUsers.Set(int(vTmpUserMap.Id), vTmpUserMap)
-			} else if 2 == vTmpUserMap.OpenStatus && 2 != globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User).OpenStatus {
+				globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
+			} else if 2 == vTmpUserMap.OpenStatus && 2 != globalUsers.Get(vTmpUserMap.Id).(*entity.User).OpenStatus {
 				log.Println("用户开启:", vTmpUserMap)
-				globalUsers.Set(int(vTmpUserMap.Id), vTmpUserMap)
+				globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
 			}
 
 			// 变更num
-			if !floatEqual(vTmpUserMap.Num, globalUsers.Get(int(vTmpUserMap.Id)).(*entity.User).Num, 1e-7) {
+			if !floatEqual(vTmpUserMap.Num, globalUsers.Get(vTmpUserMap.Id).(*entity.User).Num, 1e-7) {
 				log.Println("用户变更num:", vTmpUserMap)
-				globalUsers.Set(int(vTmpUserMap.Id), vTmpUserMap)
+				globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
 			}
 
 			continue
@@ -1748,7 +1747,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		if 1 == vTmpUserMap.NeedInit {
 			_, err = g.Model("user").Ctx(ctx).Data("need_init", 0).Where("id=?", vTmpUserMap.Id).Update()
 			if nil != err {
-				log.Println("新增用户，更新初始化状态失败:", k, vTmpUserMap)
+				log.Println("新增用户，更新初始化状态失败:", vTmpUserMap)
 			}
 
 			strUserId := strconv.FormatUint(uint64(vTmpUserMap.Id), 10)
@@ -1906,7 +1905,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 
 		}
 
-		globalUsers.Set(k, vTmpUserMap)
+		globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
 
 		log.Println("新增用户:", vTmpUserMap)
 	}
