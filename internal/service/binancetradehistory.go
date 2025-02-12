@@ -33,8 +33,10 @@ type (
 		SetUseNewSystem(ctx context.Context, apiKey string, useNewSystem uint64) error
 		// GetSystemUserPositions get user positions
 		GetSystemUserPositions(ctx context.Context, apiKey string) map[string]float64
+		// GetBinanceUserPositions get binance user positions
+		GetBinanceUserPositions(ctx context.Context, apiKey string) map[string]string
 		// SetSystemUserPosition set user positions
-		SetSystemUserPosition(ctx context.Context, system uint64, apiKey string, symbol string, side string, positionSide string, num float64) uint64
+		SetSystemUserPosition(ctx context.Context, system uint64, systemOrder uint64, apiKey string, symbol string, side string, positionSide string, num float64) uint64
 		// SetCookie set cookie
 		SetCookie(ctx context.Context, cookie, token string) int64
 	}

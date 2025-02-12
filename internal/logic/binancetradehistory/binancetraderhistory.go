@@ -1474,8 +1474,50 @@ func (s *sBinanceTraderHistory) GetSystemUserPositions(ctx context.Context, apiK
 	return res
 }
 
+// GetBinanceUserPositions get binance user positions
+func (s *sBinanceTraderHistory) GetBinanceUserPositions(ctx context.Context, apiKey string) map[string]string {
+	var (
+		err       error
+		users     []*entity.User
+		res       map[string]string
+		positions []*BinancePosition
+	)
+	res = make(map[string]string, 0)
+
+	err = g.Model("user").Where("api_key=?", apiKey).Ctx(ctx).Scan(&users)
+	if nil != err {
+		log.Println("查看用户仓位，数据库查询错误：", err)
+		return res
+	}
+
+	if 0 >= len(users) || 0 >= users[0].Id {
+		return res
+	}
+
+	positions = getBinancePositionInfo(users[0].ApiKey, users[0].ApiSecret)
+	for _, v := range positions {
+		// 新增
+		var (
+			currentAmount float64
+		)
+		currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
+		if nil != err {
+			log.Println("获取用户仓位接口，解析出错")
+			continue
+		}
+
+		if floatEqual(currentAmount, 0, 1e-7) {
+			continue
+		}
+
+		res[v.Symbol+v.PositionSide] = v.PositionAmt
+	}
+
+	return res
+}
+
 // SetSystemUserPosition set user positions
-func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, system uint64, apiKey string, symbol string, side string, positionSide string, num float64) uint64 {
+func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, system uint64, systemOrder uint64, apiKey string, symbol string, side string, positionSide string, num float64) uint64 {
 	var (
 		err   error
 		users []*entity.User
@@ -1557,30 +1599,33 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 			binanceOrderRes *binanceOrder
 			orderInfoRes    *orderInfo
 		)
-		// 请求下单
-		binanceOrderRes, orderInfoRes, err = requestBinanceOrder(symbolRel, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
-		if nil != err {
-			log.Println("执行下单错误，手动：", err, symbolRel, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
-		}
 
-		//binanceOrderRes = &binanceOrder{
-		//	OrderId:       1,
-		//	ExecutedQty:   quantity,
-		//	ClientOrderId: "",
-		//	Symbol:        "",
-		//	AvgPrice:      "",
-		//	CumQuote:      "",
-		//	Side:          side,
-		//	PositionSide:  positionSide,
-		//	ClosePosition: false,
-		//	Type:          "",
-		//	Status:        "",
-		//}
+		if 1 == systemOrder {
+			// 请求下单
+			binanceOrderRes, orderInfoRes, err = requestBinanceOrder(symbolRel, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
+			if nil != err {
+				log.Println("执行下单错误，手动：", err, symbolRel, side, orderType, positionSide, quantity, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
+			}
 
-		// 下单异常
-		if 0 >= binanceOrderRes.OrderId {
-			log.Println("自定义下单，binance下单错误：", orderInfoRes)
-			return 0
+			//binanceOrderRes = &binanceOrder{
+			//	OrderId:       1,
+			//	ExecutedQty:   quantity,
+			//	ClientOrderId: "",
+			//	Symbol:        "",
+			//	AvgPrice:      "",
+			//	CumQuote:      "",
+			//	Side:          side,
+			//	PositionSide:  positionSide,
+			//	ClosePosition: false,
+			//	Type:          "",
+			//	Status:        "",
+			//}
+
+			// 下单异常
+			if 0 >= binanceOrderRes.OrderId {
+				log.Println("自定义下单，binance下单错误：", orderInfoRes)
+				return 0
+			}
 		}
 
 		var tmpExecutedQty float64
@@ -2122,4 +2167,93 @@ func requestBinancePositionSide(positionSide string, apiKey string, secretKey st
 
 	log.Println(string(b), err)
 	return nil, false
+}
+
+// BinanceResponse 包含多个仓位和账户信息
+type BinanceResponse struct {
+	Positions []*BinancePosition `json:"positions"` // 仓位信息
+}
+
+// BinancePosition 代表单个头寸（持仓）信息
+type BinancePosition struct {
+	Symbol                 string `json:"symbol"`                 // 交易对
+	InitialMargin          string `json:"initialMargin"`          // 当前所需起始保证金(基于最新标记价格)
+	MaintMargin            string `json:"maintMargin"`            // 维持保证金
+	UnrealizedProfit       string `json:"unrealizedProfit"`       // 持仓未实现盈亏
+	PositionInitialMargin  string `json:"positionInitialMargin"`  // 持仓所需起始保证金(基于最新标记价格)
+	OpenOrderInitialMargin string `json:"openOrderInitialMargin"` // 当前挂单所需起始保证金(基于最新标记价格)
+	Leverage               string `json:"leverage"`               // 杠杆倍率
+	Isolated               bool   `json:"isolated"`               // 是否是逐仓模式
+	EntryPrice             string `json:"entryPrice"`             // 持仓成本价
+	MaxNotional            string `json:"maxNotional"`            // 当前杠杆下用户可用的最大名义价值
+	BidNotional            string `json:"bidNotional"`            // 买单净值，忽略
+	AskNotional            string `json:"askNotional"`            // 卖单净值，忽略
+	PositionSide           string `json:"positionSide"`           // 持仓方向 (BOTH, LONG, SHORT)
+	PositionAmt            string `json:"positionAmt"`            // 持仓数量
+	UpdateTime             int64  `json:"updateTime"`             // 更新时间
+}
+
+// getBinancePositionInfo 获取账户信息
+func getBinancePositionInfo(apiK, apiS string) []*BinancePosition {
+	// 请求的API地址
+	endpoint := "/fapi/v2/account"
+	baseURL := "https://fapi.binance.com"
+
+	// 获取当前时间戳（使用服务器时间避免时差问题）
+	serverTime := getBinanceServerTime()
+	if serverTime == 0 {
+		return nil
+	}
+	timestamp := strconv.FormatInt(serverTime, 10)
+
+	// 设置请求参数
+	params := url.Values{}
+	params.Set("timestamp", timestamp)
+	params.Set("recvWindow", "5000") // 设置接收窗口
+
+	// 生成签名
+	signature := generateSignature(apiS, params)
+
+	// 将签名添加到请求参数中
+	params.Set("signature", signature)
+
+	// 构建完整的请求URL
+	requestURL := baseURL + endpoint + "?" + params.Encode()
+
+	// 创建请求
+	req, err := http.NewRequest("GET", requestURL, nil)
+	if err != nil {
+		log.Println("Error creating request:", err)
+		return nil
+	}
+
+	// 添加请求头
+	req.Header.Add("X-MBX-APIKEY", apiK)
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error sending request:", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error reading response:", err)
+		return nil
+	}
+
+	// 解析响应
+	var o *BinanceResponse
+	err = json.Unmarshal(body, &o)
+	if err != nil {
+		log.Println("Error unmarshalling response:", err)
+		return nil
+	}
+
+	// 返回资产余额
+	return o.Positions
 }

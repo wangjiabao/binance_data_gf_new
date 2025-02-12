@@ -221,12 +221,26 @@ var (
 					return
 				})
 
+				// 查询用户binance仓位
+				group.GET("/user/binance/positions", func(r *ghttp.Request) {
+					res := serviceBinanceTrader.GetBinanceUserPositions(ctx, r.Get("apiKey").String())
+
+					responseData := make([]*g.MapStrAny, 0)
+					for k, v := range res {
+						responseData = append(responseData, &g.MapStrAny{k: v})
+					}
+
+					r.Response.WriteJson(responseData)
+					return
+				})
+
 				// 用户设置仓位
 				group.POST("/user/update/position", func(r *ghttp.Request) {
 					var (
-						parseErr error
-						num      float64
-						system   uint64
+						parseErr    error
+						num         float64
+						system      uint64
+						systemOrder uint64 = 1
 					)
 					num, parseErr = strconv.ParseFloat(r.PostFormValue("num"), 64)
 					if nil != parseErr || 0 >= num {
@@ -246,10 +260,22 @@ var (
 						return
 					}
 
+					if 0 < len(r.PostFormValue("systemOrder")) {
+						systemOrder, parseErr = strconv.ParseUint(r.PostFormValue("systemOrder"), 10, 64)
+						if nil != parseErr || 0 > systemOrder {
+							r.Response.WriteJson(g.Map{
+								"code": -1,
+							})
+
+							return
+						}
+					}
+
 					r.Response.WriteJson(g.Map{
 						"code": serviceBinanceTrader.SetSystemUserPosition(
 							ctx,
 							system,
+							systemOrder,
 							r.PostFormValue("apiKey"),
 							r.PostFormValue("symbol"),
 							r.PostFormValue("side"),
