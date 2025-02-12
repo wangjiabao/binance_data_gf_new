@@ -9,5 +9,5 @@ gfcli:
   gen:
     dao:
       - link: "mysql:root:wang111000@tcp(127.0.0.1:3306)/binance_data"
-        tables: "zy_trader_cookie,user"
+        tables: "zy_trader_cookie,user,cookie_email"
         jsonCase: "CamelLower"

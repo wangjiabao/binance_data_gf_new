@@ -8,12 +8,11 @@ import (
 	"github.com/gogf/gf/v2/os/gtime"
 )
 
-// NewTraderInfo is the golang structure for table new_trader_info.
-type NewTraderInfo struct {
+// CookieEmail is the golang structure for table cookie_email.
+type CookieEmail struct {
 	Id        uint        `json:"id"        ` //
-	TraderId  uint        `json:"traderId"  ` //
-	BId       int64       `json:"bId"       ` //
-	BaseMoney float64     `json:"baseMoney" ` //
+	Status    uint        `json:"status"    ` //
+	Email     string      `json:"email"     ` //
 	CreatedAt *gtime.Time `json:"createdAt" ` //
 	UpdatedAt *gtime.Time `json:"updatedAt" ` //
 }

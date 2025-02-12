@@ -9,12 +9,12 @@ import (
 	"github.com/gogf/gf/v2/os/gtime"
 )
 
-// KeyPosition is the golang structure of table key_position for DAO operations like Where/Data.
-type KeyPosition struct {
-	g.Meta    `orm:"table:key_position, do:true"`
+// CookieEmail is the golang structure of table cookie_email for DAO operations like Where/Data.
+type CookieEmail struct {
+	g.Meta    `orm:"table:cookie_email, do:true"`
 	Id        interface{} //
-	Key       interface{} //
-	Amount    interface{} //
+	Status    interface{} //
+	Email     interface{} //
 	CreatedAt *gtime.Time //
 	UpdatedAt *gtime.Time //
 }

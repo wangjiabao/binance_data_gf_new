@@ -8,19 +8,19 @@ import (
 	"binance_data_gf/internal/dao/internal"
 )
 
-// internalNewUserDao is internal type for wrapping internal DAO implements.
-type internalNewUserDao = *internal.NewUserDao
+// internalCookieEmailDao is internal type for wrapping internal DAO implements.
+type internalCookieEmailDao = *internal.CookieEmailDao
 
-// newUserDao is the data access object for table new_user.
+// cookieEmailDao is the data access object for table cookie_email.
 // You can define custom methods on it to extend its functionality as you wish.
-type newUserDao struct {
-	internalNewUserDao
+type cookieEmailDao struct {
+	internalCookieEmailDao
 }
 
 var (
-	// NewUser is globally public accessible object for table new_user operations.
-	NewUser = newUserDao{
-		internal.NewNewUserDao(),
+	// CookieEmail is globally public accessible object for table cookie_email operations.
+	CookieEmail = cookieEmailDao{
+		internal.NewCookieEmailDao(),
 	}
 )
 

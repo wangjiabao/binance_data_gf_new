@@ -11,64 +11,62 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 )
 
-// NewTraderInfoDao is the data access object for table new_trader_info.
-type NewTraderInfoDao struct {
-	table   string               // table is the underlying table name of the DAO.
-	group   string               // group is the database configuration group name of current DAO.
-	columns NewTraderInfoColumns // columns contains all the column names of Table for convenient usage.
+// CookieEmailDao is the data access object for table cookie_email.
+type CookieEmailDao struct {
+	table   string             // table is the underlying table name of the DAO.
+	group   string             // group is the database configuration group name of current DAO.
+	columns CookieEmailColumns // columns contains all the column names of Table for convenient usage.
 }
 
-// NewTraderInfoColumns defines and stores column names for table new_trader_info.
-type NewTraderInfoColumns struct {
+// CookieEmailColumns defines and stores column names for table cookie_email.
+type CookieEmailColumns struct {
 	Id        string //
-	TraderId  string //
-	BId       string //
-	BaseMoney string //
+	Status    string //
+	Email     string //
 	CreatedAt string //
 	UpdatedAt string //
 }
 
-// newTraderInfoColumns holds the columns for table new_trader_info.
-var newTraderInfoColumns = NewTraderInfoColumns{
+// cookieEmailColumns holds the columns for table cookie_email.
+var cookieEmailColumns = CookieEmailColumns{
 	Id:        "id",
-	TraderId:  "trader_id",
-	BId:       "b_id",
-	BaseMoney: "base_money",
+	Status:    "status",
+	Email:     "email",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
 }
 
-// NewNewTraderInfoDao creates and returns a new DAO object for table data access.
-func NewNewTraderInfoDao() *NewTraderInfoDao {
-	return &NewTraderInfoDao{
+// NewCookieEmailDao creates and returns a new DAO object for table data access.
+func NewCookieEmailDao() *CookieEmailDao {
+	return &CookieEmailDao{
 		group:   "default",
-		table:   "new_trader_info",
-		columns: newTraderInfoColumns,
+		table:   "cookie_email",
+		columns: cookieEmailColumns,
 	}
 }
 
 // DB retrieves and returns the underlying raw database management object of current DAO.
-func (dao *NewTraderInfoDao) DB() gdb.DB {
+func (dao *CookieEmailDao) DB() gdb.DB {
 	return g.DB(dao.group)
 }
 
 // Table returns the table name of current dao.
-func (dao *NewTraderInfoDao) Table() string {
+func (dao *CookieEmailDao) Table() string {
 	return dao.table
 }
 
 // Columns returns all column names of current dao.
-func (dao *NewTraderInfoDao) Columns() NewTraderInfoColumns {
+func (dao *CookieEmailDao) Columns() CookieEmailColumns {
 	return dao.columns
 }
 
 // Group returns the configuration group name of database of current dao.
-func (dao *NewTraderInfoDao) Group() string {
+func (dao *CookieEmailDao) Group() string {
 	return dao.group
 }
 
 // Ctx creates and returns the Model for current DAO, It automatically sets the context for current operation.
-func (dao *NewTraderInfoDao) Ctx(ctx context.Context) *gdb.Model {
+func (dao *CookieEmailDao) Ctx(ctx context.Context) *gdb.Model {
 	return dao.DB().Model(dao.table).Safe().Ctx(ctx)
 }
 
@@ -78,6 +76,6 @@ func (dao *NewTraderInfoDao) Ctx(ctx context.Context) *gdb.Model {
 //
 // Note that, you should not Commit or Rollback the transaction in function f
 // as it is automatically handled by this function.
-func (dao *NewTraderInfoDao) Transaction(ctx context.Context, f func(ctx context.Context, tx gdb.TX) error) (err error) {
+func (dao *CookieEmailDao) Transaction(ctx context.Context, f func(ctx context.Context, tx gdb.TX) error) (err error) {
 	return dao.Ctx(ctx).Transaction(ctx, f)
 }
