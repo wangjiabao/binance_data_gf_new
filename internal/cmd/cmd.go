@@ -115,6 +115,7 @@ var (
 						parseErr error
 						setErr   error
 						needInit uint64
+						num      float64
 					)
 					needInit, parseErr = strconv.ParseUint(r.PostFormValue("need_init"), 10, 64)
 					if nil != parseErr {
@@ -125,8 +126,24 @@ var (
 						return
 					}
 
-					setErr = serviceBinanceTrader.CreateUser(ctx, r.PostFormValue("address"), r.PostFormValue("api_key"),
-						r.PostFormValue("api_secret"), "binance", needInit)
+					num, parseErr = strconv.ParseFloat(r.PostFormValue("num"), 64)
+					if nil != parseErr || 0 >= num {
+						r.Response.WriteJson(g.Map{
+							"code": -1,
+						})
+
+						return
+					}
+
+					setErr = serviceBinanceTrader.CreateUser(
+						ctx,
+						r.PostFormValue("address"),
+						r.PostFormValue("api_key"),
+						r.PostFormValue("api_secret"),
+						"binance",
+						needInit,
+						num,
+					)
 					if nil != setErr {
 						r.Response.WriteJson(g.Map{
 							"code": -2,
@@ -231,6 +248,14 @@ var (
 					}
 
 					r.Response.WriteJson(responseData)
+					return
+				})
+				// 用户设置仓位
+				group.POST("/user/close/positions", func(r *ghttp.Request) {
+					r.Response.WriteJson(g.Map{
+						"code": serviceBinanceTrader.CloseBinanceUserPositions(ctx),
+					})
+
 					return
 				})
 

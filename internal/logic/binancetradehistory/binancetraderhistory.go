@@ -1301,7 +1301,7 @@ func (s *sBinanceTraderHistory) GetSystemUserNum(ctx context.Context) map[string
 }
 
 // CreateUser set user num
-func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64) error {
+func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64, num float64) error {
 	var (
 		users []*entity.User
 		err   error
@@ -1328,7 +1328,7 @@ func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey,
 		CreatedAt:  gtime.Now(),
 		UpdatedAt:  gtime.Now(),
 		NeedInit:   needInit,
-		Num:        1,
+		Num:        num,
 		Plat:       plat,
 		Dai:        0,
 		Ip:         1,
@@ -1514,6 +1514,104 @@ func (s *sBinanceTraderHistory) GetBinanceUserPositions(ctx context.Context, api
 	}
 
 	return res
+}
+
+// CloseBinanceUserPositions close binance user positions
+func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) uint64 {
+	var (
+		err   error
+		users []*entity.User
+	)
+
+	err = g.Model("user").Where("api_status=?", 1).Ctx(ctx).Scan(&users)
+	if nil != err {
+		log.Println("查看用户仓位，数据库查询错误：", err)
+		return -1
+	}
+
+	for _, vUser := range users {
+		var (
+			positions []*BinancePosition
+		)
+
+		positions = getBinancePositionInfo(vUser.ApiKey, vUser.ApiSecret)
+		for _, v := range positions {
+			// 新增
+			var (
+				currentAmount float64
+			)
+			currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
+			if nil != err {
+				log.Println("close positions 获取用户仓位接口，解析出错", v, vUser)
+				continue
+			}
+
+			if floatEqual(currentAmount, 0, 1e-7) {
+				continue
+			}
+
+			var (
+				symbolRel     = v.Symbol
+				tmpQty        float64
+				quantity      string
+				quantityFloat float64
+				orderType     = "MARKET"
+				side          string
+			)
+			if "LONG" == v.PositionSide {
+				side = "SELL"
+			} else if "SHORT" == v.PositionSide {
+				side = "BUY"
+			} else {
+				log.Println("close positions 仓位错误", v, vUser)
+				continue
+			}
+
+			tmpQty = currentAmount // 本次开单数量
+			if !symbolsMap.Contains(symbolRel) {
+				log.Println("close positions，代币信息无效，信息", v, vUser)
+				continue
+			}
+
+			// 精度调整
+			if 0 >= symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision {
+				quantity = fmt.Sprintf("%d", int64(tmpQty))
+			} else {
+				quantity = strconv.FormatFloat(tmpQty, 'f', symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision, 64)
+			}
+
+			quantityFloat, err = strconv.ParseFloat(quantity, 64)
+			if nil != err {
+				log.Println("close positions，数量解析", v, vUser, err)
+				continue
+			}
+
+			if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
+				continue
+			}
+
+			var (
+				binanceOrderRes *binanceOrder
+				orderInfoRes    *orderInfo
+			)
+
+			// 请求下单
+			binanceOrderRes, orderInfoRes, err = requestBinanceOrder(symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
+			if nil != err {
+				log.Println("close positions，执行下单错误，手动：", err, symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
+			}
+
+			// 下单异常
+			if 0 >= binanceOrderRes.OrderId {
+				log.Println("自定义下单，binance下单错误：", orderInfoRes)
+				continue
+			}
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	return 1
 }
 
 // SetSystemUserPosition set user positions

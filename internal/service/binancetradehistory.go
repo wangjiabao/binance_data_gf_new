@@ -24,7 +24,7 @@ type (
 		// GetSystemUserNum get user num
 		GetSystemUserNum(ctx context.Context) map[string]float64
 		// CreateUser set user num
-		CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64) error
+		CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64, num float64) error
 		// SetSystemUserNum set user num
 		SetSystemUserNum(ctx context.Context, apiKey string, num float64) error
 		// SetApiStatus set user api status
@@ -35,6 +35,8 @@ type (
 		GetSystemUserPositions(ctx context.Context, apiKey string) map[string]float64
 		// GetBinanceUserPositions get binance user positions
 		GetBinanceUserPositions(ctx context.Context, apiKey string) map[string]string
+		// CloseBinanceUserPositions close binance user positions
+		CloseBinanceUserPositions(ctx context.Context) uint64
 		// SetSystemUserPosition set user positions
 		SetSystemUserPosition(ctx context.Context, system uint64, systemOrder uint64, apiKey string, symbol string, side string, positionSide string, num float64) uint64
 		// SetCookie set cookie
