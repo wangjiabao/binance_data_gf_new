@@ -1606,6 +1606,7 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 				log.Println("自定义下单，binance下单错误：", orderInfoRes)
 				continue
 			}
+			log.Println("close, 执行成功：", vUser, v, binanceOrderRes)
 		}
 
 		time.Sleep(500 * time.Millisecond)
