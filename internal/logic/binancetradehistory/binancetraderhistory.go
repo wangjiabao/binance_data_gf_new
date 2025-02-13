@@ -1546,6 +1546,7 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 				continue
 			}
 
+			currentAmount = math.Abs(currentAmount)
 			if floatEqual(currentAmount, 0, 1e-7) {
 				continue
 			}
