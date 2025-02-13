@@ -1526,7 +1526,7 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 	err = g.Model("user").Where("api_status=?", 1).Ctx(ctx).Scan(&users)
 	if nil != err {
 		log.Println("查看用户仓位，数据库查询错误：", err)
-		return -1
+		return 0
 	}
 
 	for _, vUser := range users {
