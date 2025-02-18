@@ -247,14 +247,14 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		}
 
 		// 杠杆
-		var (
-			res bool
-		)
-		err, res = requestBinancePositionSide("true", vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
-		if nil != err || !res {
-			log.Println("更新用户双向持仓模式失败", vTmpUserMap)
-			continue
-		}
+		//var (
+		//	res bool
+		//)
+		//err, res = requestBinancePositionSide("true", vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret)
+		//if nil != err || !res {
+		//	log.Println("更新用户双向持仓模式失败", vTmpUserMap)
+		//	continue
+		//}
 
 		// 初始化仓位
 		if 1 == vTmpUserMap.NeedInit {
