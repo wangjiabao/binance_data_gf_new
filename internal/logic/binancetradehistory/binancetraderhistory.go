@@ -1404,7 +1404,7 @@ func (s *sBinanceTraderHistory) SetApiStatus(ctx context.Context, apiKey string,
 		return 0
 	}
 
-	_, err = g.Model("user").Ctx(ctx).Data("api_status", status).Data("need_init", init).Where("api_key=?", apiKey).Update()
+	_, err = g.Model("user").Ctx(ctx).Data(g.Map{"api_status": status, "need_init": init}).Where("api_key=?", apiKey).Update()
 	if nil != err {
 		log.Println("更新用户api_status：", err)
 		return 0
@@ -1785,9 +1785,7 @@ func (s *sBinanceTraderHistory) SetCookie(ctx context.Context, cookie, token str
 	)
 
 	_, err = g.Model("zy_trader_cookie").Ctx(ctx).
-		Data("cookie", cookie).
-		Data("token", token).
-		Data("is_open", 1).
+		Data(g.Map{"cookie": cookie, "token": token, "is_open": 1}).
 		Where("id=?", 1).Update()
 	if nil != err {
 		log.Println("更新cookie：", err)
