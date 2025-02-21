@@ -19,7 +19,6 @@ import (
 	"github.com/gogf/gf/v2/os/grpool"
 	"github.com/gogf/gf/v2/os/gtime"
 	"gopkg.in/gomail.v2"
-	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -194,7 +193,7 @@ func (s *sBinanceTraderHistory) PullAndSetBaseMoneyNewGuiTuAndUser(ctx context.C
 				log.Println("初始化成功保证金", vGlobalUsers, tmp, originTmp, tmpUserMap[vGlobalUsers.Id].Num)
 				baseMoneyUserAllMap.Set(int(vGlobalUsers.Id), tmp)
 			} else {
-				if !floatEqual(tmp, baseMoneyUserAllMap.Get(int(vGlobalUsers.Id)).(float64), 10) {
+				if !floatEqual(tmp, baseMoneyUserAllMap.Get(int(vGlobalUsers.Id)).(float64), 100) {
 					log.Println("保证金变更成功", int(vGlobalUsers.Id), tmp, originTmp, tmpUserMap[vGlobalUsers.Id].Num)
 					baseMoneyUserAllMap.Set(int(vGlobalUsers.Id), tmp)
 				}
@@ -1341,6 +1340,22 @@ func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey,
 	return nil
 }
 
+// SetPositionSide set position side
+func (s *sBinanceTraderHistory) SetPositionSide(apiKey, apiSecret string) (uint64, string) {
+	var (
+		res    bool
+		resStr string
+		err    error
+	)
+
+	err, resStr, res = requestBinancePositionSide("true", apiKey, apiSecret)
+	if nil != err || !res {
+		return 0, resStr
+	}
+
+	return 1, resStr
+}
+
 // SetSystemUserNum set user num
 func (s *sBinanceTraderHistory) SetSystemUserNum(ctx context.Context, apiKey string, num float64) error {
 	var (
@@ -1840,12 +1855,14 @@ func (s *sBinanceTraderHistory) requestBinancePositionHistoryNew(portfolioId uin
 		return nil, true, err
 	}
 
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			fmt.Println(44444, err)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				fmt.Println(44444, err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	// 结果
 	b, err = ioutil.ReadAll(resp.Body)
@@ -1933,12 +1950,14 @@ func requestBinanceOrder(symbol string, side string, orderType string, positionS
 	}
 
 	// 结果
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			fmt.Println(err)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	b, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -2003,12 +2022,14 @@ func requestBinanceTraderDetail(portfolioId uint64) (string, error) {
 	}
 
 	// 结果
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			fmt.Println(err)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	b, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -2057,12 +2078,14 @@ func getBinanceFuturesPairs() ([]*BinanceSymbolInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	// 读取响应体
 	body, err := ioutil.ReadAll(resp.Body)
@@ -2089,12 +2112,14 @@ func getBinanceServerTime() int64 {
 		return 0
 	}
 
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	var serverTimeResponse struct {
 		ServerTime int64 `json:"serverTime"`
@@ -2173,12 +2198,14 @@ func getBinanceInfo(apiK, apiS string) string {
 		return ""
 	}
 
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	// 读取响应
 	body, err := ioutil.ReadAll(resp.Body)
@@ -2199,7 +2226,7 @@ func getBinanceInfo(apiK, apiS string) string {
 	return o.TotalMarginBalance
 }
 
-func requestBinancePositionSide(positionSide string, apiKey string, secretKey string) (error, bool) {
+func requestBinancePositionSide(positionSide string, apiKey string, secretKey string) (error, string, bool) {
 	var (
 		client       *http.Client
 		req          *http.Request
@@ -2225,7 +2252,7 @@ func requestBinancePositionSide(positionSide string, apiKey string, secretKey st
 
 	req, err = http.NewRequest("POST", apiUrl, strings.NewReader(data+"&signature="+signature))
 	if err != nil {
-		return err, false
+		return err, "", false
 	}
 	// 添加头信息
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2235,36 +2262,38 @@ func requestBinancePositionSide(positionSide string, apiKey string, secretKey st
 	client = &http.Client{Timeout: 3 * time.Second}
 	resp, err = client.Do(req)
 	if err != nil {
-		return err, false
+		return err, "", false
 	}
 
 	// 结果
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			log.Println(err)
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
 		}
-	}(resp.Body)
+	}()
 
 	b, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(string(b), err)
-		return err, false
+		//log.Println(string(b), err)
+		return err, string(b), false
 	}
 
 	err = json.Unmarshal(b, &resOrderInfo)
 	if err != nil {
-		log.Println(string(b), err)
-		return err, false
+		//log.Println(string(b), err)
+		return err, string(b), false
 	}
 
 	//log.Println(string(b))
 	if 200 == resOrderInfo.Code || -4059 == resOrderInfo.Code {
-		return nil, true
+		return nil, string(b), true
 	}
 
-	log.Println(string(b), err)
-	return nil, false
+	//log.Println(string(b), err)
+	return nil, string(b), false
 }
 
 // BinanceResponse 包含多个仓位和账户信息
@@ -2335,7 +2364,14 @@ func getBinancePositionInfo(apiK, apiS string) []*BinancePosition {
 		log.Println("Error sending request:", err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("关闭响应体错误：", err)
+			}
+		}
+	}()
 
 	// 读取响应
 	body, err := ioutil.ReadAll(resp.Body)

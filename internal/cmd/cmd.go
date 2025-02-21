@@ -64,6 +64,22 @@ var (
 			// 开启http管理服务
 			s := g.Server()
 			s.Group("/api", func(group *ghttp.RouterGroup) {
+				// 探测ip
+				group.POST("/set_position_side", func(r *ghttp.Request) {
+					var (
+						setCode   uint64
+						setString string
+					)
+
+					setCode, setString = serviceBinanceTrader.SetPositionSide(r.PostFormValue("api_key"), r.PostFormValue("api_secret"))
+					r.Response.WriteJson(g.Map{
+						"code": setCode,
+						"msg":  setString,
+					})
+
+					return
+				})
+
 				// 查询num
 				group.GET("/nums", func(r *ghttp.Request) {
 					res := serviceBinanceTrader.GetSystemUserNum(ctx)
@@ -250,7 +266,8 @@ var (
 					r.Response.WriteJson(responseData)
 					return
 				})
-				// 用户设置仓位
+
+				// 用户全平仓位
 				group.POST("/user/close/positions", func(r *ghttp.Request) {
 					r.Response.WriteJson(g.Map{
 						"code": serviceBinanceTrader.CloseBinanceUserPositions(ctx),

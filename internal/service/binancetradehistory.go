@@ -25,6 +25,8 @@ type (
 		GetSystemUserNum(ctx context.Context) map[string]float64
 		// CreateUser set user num
 		CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64, num float64) error
+		// SetPositionSide set position side
+		SetPositionSide(apiKey, apiSecret string) (uint64, string)
 		// SetSystemUserNum set user num
 		SetSystemUserNum(ctx context.Context, apiKey string, num float64) error
 		// SetApiStatus set user api status
