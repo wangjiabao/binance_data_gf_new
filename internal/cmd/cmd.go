@@ -209,6 +209,13 @@ var (
 					return
 				})
 
+				// 查询api status
+				group.GET("/api_status", func(r *ghttp.Request) {
+					res := serviceBinanceTrader.GetApiStatus(ctx, r.Get("apiKey").String())
+					r.Response.WriteJson(&g.MapStrAny{r.Get("apiKey").String(): res})
+					return
+				})
+
 				// 更新开新单
 				group.POST("/update/useNewSystem", func(r *ghttp.Request) {
 					var (

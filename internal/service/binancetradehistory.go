@@ -29,6 +29,8 @@ type (
 		SetPositionSide(apiKey, apiSecret string) (uint64, string)
 		// SetSystemUserNum set user num
 		SetSystemUserNum(ctx context.Context, apiKey string, num float64) error
+		// GetApiStatus get user api status
+		GetApiStatus(ctx context.Context, apiKey string) int64
 		// SetApiStatus set user api status
 		SetApiStatus(ctx context.Context, apiKey string, status uint64, init uint64) uint64
 		// SetUseNewSystem set user num

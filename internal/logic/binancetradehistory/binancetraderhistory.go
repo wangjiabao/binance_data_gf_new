@@ -1484,6 +1484,26 @@ func (s *sBinanceTraderHistory) SetSystemUserNum(ctx context.Context, apiKey str
 	return nil
 }
 
+// GetApiStatus get user api status
+func (s *sBinanceTraderHistory) GetApiStatus(ctx context.Context, apiKey string) int64 {
+	var (
+		err   error
+		users []*entity.User
+	)
+
+	err = g.Model("user").Where("api_key=?", apiKey).Ctx(ctx).Scan(&users)
+	if nil != err {
+		log.Println("查看用户仓位，数据库查询错误：", err)
+		return -1
+	}
+
+	if 0 >= len(users) || 0 >= users[0].Id {
+		return -1
+	}
+
+	return int64(users[0].ApiStatus)
+}
+
 // SetApiStatus set user api status
 func (s *sBinanceTraderHistory) SetApiStatus(ctx context.Context, apiKey string, status uint64, init uint64) uint64 {
 	var (
