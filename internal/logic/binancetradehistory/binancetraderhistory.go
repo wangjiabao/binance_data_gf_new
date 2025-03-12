@@ -440,7 +440,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 				}
 
 				//  这里只能是，跟单人开仓，用户的预备仓位清空
-				orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+				orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 			}
 
 		}
@@ -1004,7 +1004,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 					}
 
 					//  这里只能是，跟单人开仓，用户的预备仓位清空
-					orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+					orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 					log.Println("现有仓位：", tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, orderMap.Get(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId))
 					return
 				})
@@ -1057,7 +1057,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 							log.Println("变更，完全平仓，清空暂存：", tmpOldQty, tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId)
 						}
 					}
-					orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+					orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 
 					// 未开启过仓位
 					if !orderMap.Contains(tmpUpdateData.Symbol + "&" + tmpUpdateData.PositionSide + "&" + strUserId) {
@@ -1220,7 +1220,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						}
 
 						// 跟单人开仓成功，用户的预备仓位清空
-						orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+						orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 					} else {
 						// 追加仓位，开仓
 						if "LONG" == positionSide {
@@ -1241,7 +1241,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 								orderMap.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, newRes)
 
 								// 跟单人开仓成功，用户的预备仓位清空
-								orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+								orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 							} else if "SELL" == side {
 								d1 := decimal.NewFromFloat(orderMap.Get(tmpUpdateData.Symbol + "&" + positionSide + "&" + strUserId).(float64))
 								d2 := decimal.NewFromFloat(tmpExecutedQty)
@@ -1264,7 +1264,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 
 								//  跟单人完全平仓，用户的预备仓位清空
 								if lessThanOrEqualZero(newRes, 0, 1e-7) {
-									orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+									orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 								}
 							} else {
 								log.Println("未知仓位信息，信息", tmpUpdateData, tmpExecutedQty)
@@ -1288,7 +1288,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 								orderMap.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, newRes)
 
 								// 跟单人开仓成功，用户的预备仓位清空
-								orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+								orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 							} else if "BUY" == side {
 								d1 := decimal.NewFromFloat(orderMap.Get(tmpUpdateData.Symbol + "&" + positionSide + "&" + strUserId).(float64))
 								d2 := decimal.NewFromFloat(tmpExecutedQty)
@@ -1311,7 +1311,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 
 								//  跟单人完全平仓，用户的预备仓位清空
 								if lessThanOrEqualZero(newRes, 0, 1e-7) {
-									orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, 0)
+									orderMapTmp.Set(tmpUpdateData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 								}
 							} else {
 								log.Println("未知仓位信息，信息", tmpUpdateData, tmpExecutedQty)
@@ -1904,7 +1904,7 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
 
 						// 跟单人开仓成功，用户的预备仓位清空
-						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, 0)
+						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
 					} else if "SELL" == side {
 						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
 						d2 := decimal.NewFromFloat(tmpExecutedQty)
@@ -1927,7 +1927,7 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 
 						//  跟单人完全平仓，用户的预备仓位清空
 						if lessThanOrEqualZero(newRes, 0, 1e-7) {
-							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, 0)
+							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
 						}
 					} else {
 						log.Println("手动，binance下单，数据存储:", system, apiKey, symbol, side, positionSide, num, binanceOrderRes, orderInfoRes, tmpExecutedQty)
@@ -1951,7 +1951,7 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
 
 						// 跟单人开仓成功，用户的预备仓位清空
-						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, 0)
+						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
 					} else if "BUY" == side {
 						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
 						d2 := decimal.NewFromFloat(tmpExecutedQty)
@@ -1974,7 +1974,7 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 
 						//  跟单人完全平仓，用户的预备仓位清空
 						if lessThanOrEqualZero(newRes, 0, 1e-7) {
-							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, 0)
+							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
 						}
 					} else {
 						log.Println("手动，binance下单，数据存储:", system, apiKey, symbol, side, positionSide, num, binanceOrderRes, orderInfoRes, tmpExecutedQty)
