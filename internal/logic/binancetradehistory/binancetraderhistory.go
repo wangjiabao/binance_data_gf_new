@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	bybit "github.com/bybit-exchange/bybit.go.api"
 	"github.com/gogf/gf/v2/container/gmap"
 	"github.com/gogf/gf/v2/container/gtype"
 	"github.com/gogf/gf/v2/database/gdb"
@@ -65,6 +66,22 @@ func lessThanOrEqualZero(a, b float64, epsilon float64) bool {
 	return a-b < epsilon || math.Abs(a-b) < epsilon
 }
 
+// 获取步长的小数精度
+func getStringFromStepSizePrecision(value, stepSize float64) string {
+	stepStr := strconv.FormatFloat(stepSize, 'f', -1, 64) // 转换为字符串
+	parts := strings.Split(stepStr, ".")
+	if len(parts) == 2 { // 小数部分的长度即为精度
+		return strconv.FormatFloat(value, 'f', len(parts[1]), 64) // 保留相同的小数位数
+	} else {
+		return fmt.Sprintf("%d", int64(value))
+	}
+}
+
+// 调整数值并返回符合步长精度的字符串
+func adjustToStepSize(value, stepSize float64) float64 {
+	return math.Floor(value/stepSize) * stepSize
+}
+
 type LhCoinSymbol struct {
 	Id                uint    `json:"id"                ` //
 	Coin              string  `json:"coin"              ` //
@@ -82,6 +99,10 @@ type LhCoinSymbol struct {
 	QuantoMultiplier  float64 `json:"quantoMultiplier"  ` //
 }
 
+type BybitSymbol struct {
+	QtyStep string
+}
+
 type TraderPosition struct {
 	Symbol         string  `json:"symbol"         ` //
 	PositionSide   string  `json:"positionSide"   ` //
@@ -89,7 +110,7 @@ type TraderPosition struct {
 }
 
 var (
-	globalTraderNum = uint64(3887627985594221568) // todo 改 3887627985594221568
+	globalTraderNum = uint64(4454993952067821057) // todo 改 3887627985594221568
 	orderMap        = gmap.New(true)              // 初始化下单记录
 	orderMapTmp     = gmap.New(true)              // 初始化下单记录
 
@@ -101,7 +122,8 @@ var (
 	// 仓位
 	binancePositionMap = make(map[string]*TraderPosition, 0)
 
-	symbolsMap = gmap.NewStrAnyMap(true)
+	symbolsMap      = gmap.NewStrAnyMap(true)
+	symbolsBybitMap = gmap.NewStrAnyMap(true)
 )
 
 // UpdateCoinInfo 初始化信息
@@ -110,6 +132,7 @@ func (s *sBinanceTraderHistory) UpdateCoinInfo(ctx context.Context) bool {
 	var (
 		err               error
 		binanceSymbolInfo []*BinanceSymbolInfo
+		bybitSymbolInfo   []*BybitContract
 	)
 	binanceSymbolInfo, err = getBinanceFuturesPairs()
 	if nil != err {
@@ -117,10 +140,26 @@ func (s *sBinanceTraderHistory) UpdateCoinInfo(ctx context.Context) bool {
 		return false
 	}
 
-	for k, v := range binanceSymbolInfo {
+	for _, v := range binanceSymbolInfo {
 		symbolsMap.Set(v.Symbol, &LhCoinSymbol{
-			Id:                uint(k),
 			QuantityPrecision: v.QuantityPrecision,
+		})
+	}
+
+	bybitSymbolInfo, err = getByBitCoinInfo()
+	if nil != err {
+		log.Println(err)
+		return false
+	}
+
+	if 0 >= len(bybitSymbolInfo) {
+		log.Println("bybit合约信息空的")
+		return false
+	}
+
+	for _, v := range bybitSymbolInfo {
+		symbolsBybitMap.Set(v.Symbol, &BybitSymbol{
+			QtyStep: v.LotSizeFilter.QtyStep,
 		})
 	}
 
@@ -2590,4 +2629,84 @@ func getBinancePositionInfo(apiK, apiS string) []*BinancePosition {
 
 	// 返回资产余额
 	return o.Positions
+}
+
+// BybitLotSizeFilter 解析 LotSizeFilter 相关信息
+type BybitLotSizeFilter struct {
+	MinOrderQty string `json:"minOrderQty"` // 最小下单量
+	MaxOrderQty string `json:"maxOrderQty"` // 最大下单量
+	QtyStep     string `json:"qtyStep"`     // 下单步长
+}
+
+// BybitContract 解析 USDT 永续合约信息
+type BybitContract struct {
+	Symbol        string             `json:"symbol"`        // 交易对名称
+	ContractType  string             `json:"contractType"`  // 合约类型
+	Status        string             `json:"status"`        // 状态（Trading、PreLaunch）
+	BaseCoin      string             `json:"baseCoin"`      // 交易基础货币
+	QuoteCoin     string             `json:"quoteCoin"`     // 计价货币
+	LaunchTime    string             `json:"launchTime"`    // 上线时间
+	LotSizeFilter BybitLotSizeFilter `json:"lotSizeFilter"` // 下单规则
+}
+
+func getByBitCoinInfo() ([]*BybitContract, error) {
+	client := bybit.NewBybitHttpClient("", "", bybit.WithBaseURL(bybit.MAINNET))
+	res := make([]*BybitContract, 0)
+
+	// 查询 USDT 永续合约
+	params := map[string]interface{}{
+		"category": "linear", // 只查询 USDT 永续合约
+	}
+
+	// 调用 API 获取合约信息
+	var (
+		info *bybit.ServerResponse
+		err  error
+	)
+	info, err = client.NewUtaBybitServiceWithParams(params).GetInstrumentInfo(context.Background())
+	if err != nil {
+		log.Println("API 请求失败:", err)
+		return res, err
+	}
+
+	// 检查返回码
+	if info.RetCode != 0 {
+		log.Println("API 返回错误", info.RetCode, info.RetMsg)
+		return res, nil
+	}
+
+	// 解析 info.Result 为 map
+	resultMap, ok := info.Result.(map[string]interface{})
+	if !ok {
+		log.Println("解析 API 结果失败: ", info.Result)
+		return res, nil
+	}
+
+	// 解析合约列表
+	list, ok2 := resultMap["list"].([]interface{})
+	if !ok2 {
+		log.Println("解析合约列表失败:", resultMap)
+		return res, nil
+	}
+
+	for _, item := range list {
+		var (
+			contractJSON []byte
+		)
+		contractJSON, err = json.Marshal(item)
+		if err != nil {
+			log.Printf("合约 JSON 序列化失败: %v", err)
+			continue
+		}
+
+		var contract *BybitContract
+		if err = json.Unmarshal(contractJSON, &contract); err != nil {
+			log.Printf("合约 JSON 解析失败: %v", err)
+			continue
+		}
+
+		res = append(res, contract)
+	}
+
+	return res, nil
 }
