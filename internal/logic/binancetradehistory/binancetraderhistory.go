@@ -3229,6 +3229,7 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		"qty":         qty,      // 下单数量
 	}
 
+	log.Println("测试下单信息：", params)
 	// 发起下单请求
 	resp, err := client.NewUtaBybitServiceWithParams(params).PlaceOrder(ctx)
 	if err != nil {
@@ -3239,6 +3240,8 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		contractJSON  []byte
 		orderResponse *BybitPlaceOrderResponse
 	)
+
+	log.Println(resp)
 	contractJSON, err = json.Marshal(resp)
 	if err != nil {
 		log.Printf("合约 JSON 序列化失败: %v", err)
