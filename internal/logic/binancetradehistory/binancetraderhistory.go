@@ -1569,6 +1569,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						continue
 					}
 
+					log.Println(tmpQtyStep, tmpQty, tmpFloatQuantity, quantity, quantityFloat)
 					if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
 						continue
 					}
