@@ -79,7 +79,7 @@ func getStringFromStepSizePrecision(value, stepSize float64) string {
 
 // 调整数值并返回符合步长精度的字符串
 func adjustToStepSize(value, stepSize float64) float64 {
-	return math.Floor(value/stepSize) * stepSize
+	return math.Ceil(value/stepSize) * stepSize
 }
 
 type LhCoinSymbol struct {
