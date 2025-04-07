@@ -3167,7 +3167,9 @@ func getBybitAccountBalance(ctx context.Context, apiK, apiS string) ([]*BybitBal
 	client := bybit.NewBybitHttpClient(apiK, apiS, bybit.WithBaseURL(bybit.MAINNET))
 
 	// 构造请求参数（如果 API 需要）
-	params := map[string]interface{}{}
+	params := map[string]interface{}{
+		"category": "linear", // 只查询 USDT 永续合约
+	}
 
 	resp, err := client.NewUtaBybitServiceWithParams(params).GetAccountWallet(ctx)
 	if err != nil {
