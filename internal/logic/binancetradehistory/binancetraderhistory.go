@@ -3168,7 +3168,7 @@ func getBybitAccountBalance(ctx context.Context, apiK, apiS string) ([]*BybitBal
 
 	// 构造请求参数（如果 API 需要）
 	params := map[string]interface{}{
-		"category": "linear", // 只查询 USDT 永续合约
+		"accountType": "UNIFIED", // 只查询 USDT 永续合约
 	}
 
 	resp, err := client.NewUtaBybitServiceWithParams(params).GetAccountWallet(ctx)
