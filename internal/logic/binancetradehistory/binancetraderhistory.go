@@ -117,7 +117,8 @@ var (
 	baseMoneyGuiTu      = gtype.NewFloat64()
 	baseMoneyUserAllMap = gmap.NewIntAnyMap(true)
 
-	globalUsers = gmap.New(true)
+	globalUsers        = gmap.New(true)
+	globalUsersOrderId = gmap.New(true)
 
 	// 仓位
 	binancePositionMap = make(map[string]*TraderPosition, 0)
@@ -620,10 +621,19 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 						continue
 					}
 
+					if !globalUsersOrderId.Contains(vTmpUserMap.Id) {
+						log.Println("新增用户，无效信息，不存在自增订单，信息", vInsertData, vTmpUserMap)
+						continue
+					}
+
+					tmpOrderId := globalUsersOrderId.Get(vTmpUserMap.Id).(uint64)
+					globalUsersOrderId.Set(vTmpUserMap.Id, tmpOrderId+1)
+					tmpOrderIdStr := strconv.FormatUint(uint64(vTmpUserMap.Id), 10) + "at" + strconv.FormatUint(uint64(time.Now().Unix()), 10) + "&" + strconv.FormatUint(tmpOrderId, 10)
+
 					var (
 						resOrder *BybitPlaceOrderResponse
 					)
-					resOrder, err = bybitPlaceOrder(ctx, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret, tmpInsertData.Symbol, quantity, sideOrder, positionSideOrder, uint64(vTmpUserMap.Id))
+					resOrder, err = bybitPlaceOrder(ctx, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret, tmpInsertData.Symbol, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 					if nil != err {
 						log.Println("bybit 初始化仓位下单错误", err, resOrder)
 					}
@@ -683,6 +693,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		}
 
 		globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
+		globalUsersOrderId.Set(vTmpUserMap.Id, uint64(0))
 
 		log.Println("新增用户:", vTmpUserMap)
 	}
@@ -700,6 +711,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 	for _, vTmpIds := range tmpIds {
 		log.Println("删除用户:", vTmpIds)
 		globalUsers.Remove(vTmpIds)
+		globalUsersOrderId.Remove(vTmpIds)
 
 		tmpRemoveUserKey := make([]string, 0)
 		// 遍历map
@@ -1317,6 +1329,15 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						continue
 					}
 
+					if !globalUsersOrderId.Contains(tmpUser.Id) {
+						log.Println("新增，无效信息，不存在自增订单，信息", vInsertData, tmpUser)
+						continue
+					}
+
+					tmpOrderId := globalUsersOrderId.Get(tmpUser.Id).(uint64)
+					globalUsersOrderId.Set(tmpUser.Id, tmpOrderId+1)
+					tmpOrderIdStr := strconv.FormatUint(uint64(tmpUser.Id), 10) + "at" + strconv.FormatUint(uint64(time.Now().Unix()), 10) + "&" + strconv.FormatUint(tmpOrderId, 10)
+
 					wg.Add(1)
 					err = s.pool.Add(ctx, func(ctx context.Context) {
 						defer wg.Done()
@@ -1324,7 +1345,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						var (
 							resOrder *BybitPlaceOrderResponse
 						)
-						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpInsertData.Symbol, quantity, sideOrder, positionSideOrder, uint64(tmpUser.Id))
+						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpInsertData.Symbol, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 						if nil != err {
 							log.Println("bybit 初始化仓位下单错误", err, resOrder)
 						}
@@ -1540,6 +1561,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 					continue
 				}
 
+				var tmpOrderIdStr string
 				if "binance" == tmpUser.Plat {
 					// 精度调整
 					if 0 >= symbolsMap.Get(tmpUpdateData.Symbol).(*LhCoinSymbol).QuantityPrecision {
@@ -1573,6 +1595,16 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 					if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
 						continue
 					}
+
+					if !globalUsersOrderId.Contains(tmpUser.Id) {
+						log.Println("更新，无效信息，不存在自增订单，信息", tmpUpdateData, tmpUser)
+						continue
+					}
+
+					tmpOrderId := globalUsersOrderId.Get(tmpUser.Id).(uint64)
+					globalUsersOrderId.Set(tmpUser.Id, tmpOrderId+1)
+					tmpOrderIdStr = strconv.FormatUint(uint64(tmpUser.Id), 10) + "at" + strconv.FormatUint(uint64(time.Now().Unix()), 10) + "&" + strconv.FormatUint(tmpOrderId, 10)
+
 				} else {
 					log.Println("无效信息，信息", tmpUpdateData)
 					continue
@@ -1635,7 +1667,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						var (
 							resOrder *BybitPlaceOrderResponse
 						)
-						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpUpdateData.Symbol, quantity, sideOrder, positionSideOrder, uint64(tmpUser.Id))
+						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpUpdateData.Symbol, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 						if nil != err {
 							log.Println("bybit 初始化仓位下单错误", err, resOrder)
 						}
@@ -2336,10 +2368,19 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 					continue
 				}
 
+				if !globalUsersOrderId.Contains(users[0].Id) {
+					log.Println("close position，无效信息，不存在自增订单，信息", users[0])
+					continue
+				}
+
+				tmpOrderId := globalUsersOrderId.Get(users[0].Id).(uint64)
+				globalUsersOrderId.Set(users[0].Id, tmpOrderId+1)
+				tmpOrderIdStr := strconv.FormatUint(uint64(users[0].Id), 10) + "at" + strconv.FormatUint(uint64(time.Now().Unix()), 10) + "&" + strconv.FormatUint(tmpOrderId, 10)
+
 				var (
 					resOrder *BybitPlaceOrderResponse
 				)
-				resOrder, err = bybitPlaceOrder(ctx, users[0].ApiKey, users[0].ApiSecret, symbolRel, quantity, side, v.PositionIdx, uint64(users[0].Id))
+				resOrder, err = bybitPlaceOrder(ctx, users[0].ApiKey, users[0].ApiSecret, symbolRel, quantity, side, v.PositionIdx, tmpOrderIdStr)
 				if nil != err {
 					log.Println("bybit 初始化仓位下单错误", err, resOrder)
 				}
@@ -2641,7 +2682,16 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 		)
 
 		if 1 == systemOrder {
-			resOrder, err = bybitPlaceOrder(ctx, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret, symbolRel, quantity, sideOrder, positionSideOrder, uint64(vTmpUserMap.Id))
+			if !globalUsersOrderId.Contains(vTmpUserMap.Id) {
+				log.Println("自定义下单，无效信息，不存在自增订单，信息", vTmpUserMap)
+				return 0
+			}
+
+			tmpOrderId := globalUsersOrderId.Get(vTmpUserMap.Id).(uint64)
+			globalUsersOrderId.Set(vTmpUserMap.Id, tmpOrderId+1)
+			tmpOrderIdStr := strconv.FormatUint(uint64(vTmpUserMap.Id), 10) + "at" + strconv.FormatUint(uint64(time.Now().Unix()), 10) + "&" + strconv.FormatUint(tmpOrderId, 10)
+
+			resOrder, err = bybitPlaceOrder(ctx, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret, symbolRel, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 			if nil != err {
 				log.Println("bybit 自定义下单，错误", err, resOrder)
 			}
@@ -3537,7 +3587,7 @@ type BybitPlaceOrderResponse struct {
 	Time       int64       `json:"time"`
 }
 
-func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, position int, userId uint64) (*BybitPlaceOrderResponse, error) {
+func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, position int, orderId string) (*BybitPlaceOrderResponse, error) {
 	// 初始化客户端（选择 TESTNET 或 MAINNET）
 	client := bybit.NewBybitHttpClient(
 		apiK,
@@ -3545,7 +3595,6 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		bybit.WithBaseURL(bybit.MAINNET), // 或者 MAINNET
 	)
 
-	tmpOrderId := strconv.FormatUint(userId, 10) + "at" + time.Now().String()
 	// 构造下单参数
 	params := map[string]interface{}{
 		"category":    "linear",
@@ -3554,7 +3603,7 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		"positionIdx": position, // 仓位索引：0 表示单向持仓模式，1 表示多仓，2 表示空仓
 		"orderType":   "Market", // 订单类型：Limit 或 Market
 		"qty":         qty,      // 下单数量
-		"orderLinkId": tmpOrderId,
+		"orderLinkId": orderId,
 	}
 
 	//log.Println("测试下单信息：", params)
