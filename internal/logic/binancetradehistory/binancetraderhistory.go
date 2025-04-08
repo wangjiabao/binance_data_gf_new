@@ -777,8 +777,8 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 
 	// 执行
 	for {
-		//time.Sleep(50 * time.Millisecond) // 测试 28 最低值
-		time.Sleep(5 * time.Second) // 测试 28 最低值
+		time.Sleep(50 * time.Millisecond) // 测试 28 最低值
+		//time.Sleep(5 * time.Second) // 测试 28 最低值
 		start := time.Now()
 
 		// 重新初始化数据
