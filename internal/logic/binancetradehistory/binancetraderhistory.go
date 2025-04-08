@@ -166,7 +166,6 @@ func (s *sBinanceTraderHistory) UpdateCoinInfo(ctx context.Context) bool {
 			continue
 		}
 
-		log.Println(v.Symbol, v.LotSizeFilter.QtyStep)
 		if lessThanOrEqualZero(tmp, 0, 1e-7) {
 			log.Println("更新币种，bybit", tmp, err)
 			continue
@@ -3447,6 +3446,7 @@ func getByBitCoinInfo(ctx context.Context) ([]*BybitContract, error) {
 	// 查询 USDT 永续合约
 	params := map[string]interface{}{
 		"category": "linear", // 只查询 USDT 永续合约
+		"limit":    1000,
 	}
 
 	// 调用 API 获取合约信息
