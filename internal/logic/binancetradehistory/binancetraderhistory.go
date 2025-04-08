@@ -2182,9 +2182,11 @@ func (s *sBinanceTraderHistory) GetPlatUserPositions(ctx context.Context, apiKey
 				continue
 			}
 
-			positionSide := "SHORT"
+			positionSide := "BOTH"
 			if 1 == v.PositionIdx {
 				positionSide = "LONG"
+			} else if 2 == v.PositionIdx {
+				positionSide = "SHORT"
 			}
 
 			res[v.Symbol+positionSide] = v.Size
