@@ -341,6 +341,8 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		//	continue
 		//}
 
+		globalUsersOrderId.Set(vTmpUserMap.Id, uint64(0))
+
 		// 初始化仓位
 		if 1 == vTmpUserMap.NeedInit {
 			_, err = g.Model("user").Ctx(ctx).Data("need_init", 0).Where("id=?", vTmpUserMap.Id).Update()
@@ -693,7 +695,6 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 		}
 
 		globalUsers.Set(vTmpUserMap.Id, vTmpUserMap)
-		globalUsersOrderId.Set(vTmpUserMap.Id, uint64(0))
 
 		log.Println("新增用户:", vTmpUserMap)
 	}
