@@ -3684,7 +3684,7 @@ func bybitGetPositionInfo(ctx context.Context, apiK, apiS string) (*BybitPositio
 		jsonBytes   []byte
 		positionRes *BybitPositionInfoResponse
 	)
-
+	log.Printf("测试仓位信息：", resp)
 	jsonBytes, err = json.Marshal(resp)
 	if err != nil {
 		log.Printf("序列化 JSON 失败: %v", err)
