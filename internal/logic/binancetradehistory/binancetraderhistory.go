@@ -1925,12 +1925,10 @@ func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey,
 		tmpMap[v.Plat] = append(tmpMap[v.Plat], v)
 	}
 
-	if _, ok := tmpMap[plat]; !ok {
-		return errors.New("错误的平台信息")
-	}
-
-	if 50 <= len(tmpMap[plat]) {
-		return errors.New("超人数")
+	if _, ok := tmpMap[plat]; ok {
+		if 50 <= len(tmpMap[plat]) {
+			return errors.New("超人数")
+		}
 	}
 
 	_, err = g.Model("user").Ctx(ctx).Insert(&do.User{
