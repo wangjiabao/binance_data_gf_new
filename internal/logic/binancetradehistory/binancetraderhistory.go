@@ -3670,8 +3670,9 @@ func bybitGetPositionInfo(ctx context.Context, apiK, apiS string) (*BybitPositio
 	)
 
 	params := map[string]interface{}{
-		"category": "linear", // 线性合约
-		"limit":    200,
+		"category":   "linear", // 线性合约
+		"limit":      200,
+		"settleCoin": "USDT",
 	}
 
 	resp, err := client.NewUtaBybitServiceWithParams(params).GetPositionList(ctx)
