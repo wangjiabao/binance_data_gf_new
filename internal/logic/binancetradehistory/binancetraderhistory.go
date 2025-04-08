@@ -171,7 +171,6 @@ func (s *sBinanceTraderHistory) UpdateCoinInfo(ctx context.Context) bool {
 			continue
 		}
 
-		log.Println(v.Symbol)
 		symbolsBybitMap.Set(v.Symbol, &BybitSymbol{
 			QtyStep: tmp,
 		})
