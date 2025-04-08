@@ -1949,6 +1949,10 @@ func (s *sBinanceTraderHistory) SetPositionSide(ctx context.Context, plat, apiKe
 		}
 
 		if 0 != bybitRes.RetCode {
+			if 110025 == bybitRes.RetCode {
+				return 1, resStrBybit
+			}
+
 			return 0, resStrBybit
 		}
 
