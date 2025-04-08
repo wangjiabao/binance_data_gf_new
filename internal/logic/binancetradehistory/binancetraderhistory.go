@@ -166,6 +166,7 @@ func (s *sBinanceTraderHistory) UpdateCoinInfo(ctx context.Context) bool {
 			continue
 		}
 
+		log.Println(v.Symbol, v.LotSizeFilter.QtyStep)
 		if lessThanOrEqualZero(tmp, 0, 1e-7) {
 			log.Println("更新币种，bybit", tmp, err)
 			continue
