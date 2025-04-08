@@ -1569,7 +1569,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						continue
 					}
 
-					log.Println(tmpQtyStep, tmpQty, tmpFloatQuantity, quantity, quantityFloat)
+					//log.Println(tmpQtyStep, tmpQty, tmpFloatQuantity, quantity, quantityFloat)
 					if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
 						continue
 					}
@@ -1884,7 +1884,20 @@ func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey,
 		return err
 	}
 
-	if 50 <= len(users) {
+	tmpMap := make(map[string][]*entity.User, 0)
+	for _, v := range users {
+		if _, ok := tmpMap[v.Plat]; !ok {
+			tmpMap[v.Plat] = make([]*entity.User, 0)
+		}
+
+		tmpMap[v.Plat] = append(tmpMap[v.Plat], v)
+	}
+
+	if _, ok := tmpMap[plat]; !ok {
+		return errors.New("错误的平台信息")
+	}
+
+	if 50 <= len(tmpMap[plat]) {
 		return errors.New("超人数")
 	}
 
@@ -1911,19 +1924,38 @@ func (s *sBinanceTraderHistory) CreateUser(ctx context.Context, address, apiKey,
 }
 
 // SetPositionSide set position side
-func (s *sBinanceTraderHistory) SetPositionSide(apiKey, apiSecret string) (uint64, string) {
+func (s *sBinanceTraderHistory) SetPositionSide(ctx context.Context, plat, apiKey, apiSecret string) (uint64, string) {
 	var (
 		res    bool
 		resStr string
 		err    error
 	)
 
-	err, resStr, res = requestBinancePositionSide("true", apiKey, apiSecret)
-	if nil != err || !res {
-		return 0, resStr
+	if "binance" == plat {
+		err, resStr, res = requestBinancePositionSide("true", apiKey, apiSecret)
+		if nil != err || !res {
+			return 0, resStr
+		}
+
+		return 1, resStr
+	} else if "bybit" == plat {
+		var (
+			bybitRes    *BybitSetPositionSideResponse
+			resStrBybit string
+		)
+		bybitRes, resStrBybit, err = bybitSetPositionSide(ctx, apiKey, apiSecret, "BTCUSDT")
+		if nil != err || nil == bybitRes {
+			return 0, resStrBybit
+		}
+
+		if 0 != bybitRes.RetCode {
+			return 0, resStrBybit
+		}
+
+		return 1, resStrBybit
 	}
 
-	return 1, resStr
+	return 0, ""
 }
 
 // SetSystemUserNum set user num
@@ -2079,8 +2111,8 @@ func (s *sBinanceTraderHistory) GetSystemUserPositions(ctx context.Context, apiK
 	return res
 }
 
-// GetBinanceUserPositions get binance user positions
-func (s *sBinanceTraderHistory) GetBinanceUserPositions(ctx context.Context, apiKey string) map[string]string {
+// GetPlatUserPositions get Plat user positions
+func (s *sBinanceTraderHistory) GetPlatUserPositions(ctx context.Context, apiKey string) map[string]string {
 	var (
 		err       error
 		users     []*entity.User
@@ -2098,24 +2130,62 @@ func (s *sBinanceTraderHistory) GetBinanceUserPositions(ctx context.Context, api
 	if 0 >= len(users) || 0 >= users[0].Id {
 		return res
 	}
+	if "binance" == users[0].Plat {
+		positions = getBinancePositionInfo(users[0].ApiKey, users[0].ApiSecret)
+		for _, v := range positions {
+			// 新增
+			var (
+				currentAmount float64
+			)
+			currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
+			if nil != err {
+				log.Println("获取用户仓位接口，解析出错")
+				continue
+			}
 
-	positions = getBinancePositionInfo(users[0].ApiKey, users[0].ApiSecret)
-	for _, v := range positions {
-		// 新增
+			if floatEqual(currentAmount, 0, 1e-7) {
+				continue
+			}
+
+			res[v.Symbol+v.PositionSide] = v.PositionAmt
+		}
+	} else if "bybit" == users[0].Plat {
 		var (
-			currentAmount float64
+			bybitPisitionsRes *BybitPositionInfoResponse
 		)
-		currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
-		if nil != err {
-			log.Println("获取用户仓位接口，解析出错")
-			continue
+
+		bybitPisitionsRes, err = bybitGetPositionInfo(ctx, users[0].ApiKey, users[0].ApiSecret)
+		if nil != err || nil == bybitPisitionsRes {
+			return res
 		}
 
-		if floatEqual(currentAmount, 0, 1e-7) {
-			continue
+		for _, v := range bybitPisitionsRes.Result.List {
+			if "" == v.Side || "None" == v.Side {
+				continue
+			}
+
+			// 新增
+			var (
+				currentAmount float64
+			)
+			currentAmount, err = strconv.ParseFloat(v.Size, 64)
+			if nil != err {
+				log.Println("获取用户仓位接口，解析出错")
+				continue
+			}
+
+			if floatEqual(currentAmount, 0, 1e-7) {
+				continue
+			}
+
+			positionSide := "SHORT"
+			if 1 == v.PositionIdx {
+				positionSide = "LONG"
+			}
+
+			res[v.Symbol+positionSide] = v.Size
 		}
 
-		res[v.Symbol+v.PositionSide] = v.PositionAmt
 	}
 
 	return res
@@ -2135,84 +2205,148 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 	}
 
 	for _, vUser := range users {
-		var (
-			positions []*BinancePosition
-		)
 
-		positions = getBinancePositionInfo(vUser.ApiKey, vUser.ApiSecret)
-		for _, v := range positions {
-			// 新增
+		if "binance" == vUser.Plat {
 			var (
-				currentAmount float64
-			)
-			currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
-			if nil != err {
-				log.Println("close positions 获取用户仓位接口，解析出错", v, vUser)
-				continue
-			}
-
-			currentAmount = math.Abs(currentAmount)
-			if floatEqual(currentAmount, 0, 1e-7) {
-				continue
-			}
-
-			var (
-				symbolRel     = v.Symbol
-				tmpQty        float64
-				quantity      string
-				quantityFloat float64
-				orderType     = "MARKET"
-				side          string
-			)
-			if "LONG" == v.PositionSide {
-				side = "SELL"
-			} else if "SHORT" == v.PositionSide {
-				side = "BUY"
-			} else {
-				log.Println("close positions 仓位错误", v, vUser)
-				continue
-			}
-
-			tmpQty = currentAmount // 本次开单数量
-			if !symbolsMap.Contains(symbolRel) {
-				log.Println("close positions，代币信息无效，信息", v, vUser)
-				continue
-			}
-
-			// 精度调整
-			if 0 >= symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision {
-				quantity = fmt.Sprintf("%d", int64(tmpQty))
-			} else {
-				quantity = strconv.FormatFloat(tmpQty, 'f', symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision, 64)
-			}
-
-			quantityFloat, err = strconv.ParseFloat(quantity, 64)
-			if nil != err {
-				log.Println("close positions，数量解析", v, vUser, err)
-				continue
-			}
-
-			if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
-				continue
-			}
-
-			var (
-				binanceOrderRes *binanceOrder
-				orderInfoRes    *orderInfo
+				positions []*BinancePosition
 			)
 
-			// 请求下单
-			binanceOrderRes, orderInfoRes, err = requestBinanceOrder(symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
-			if nil != err {
-				log.Println("close positions，执行下单错误，手动：", err, symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
+			positions = getBinancePositionInfo(vUser.ApiKey, vUser.ApiSecret)
+			for _, v := range positions {
+				// 新增
+				var (
+					currentAmount float64
+				)
+				currentAmount, err = strconv.ParseFloat(v.PositionAmt, 64)
+				if nil != err {
+					log.Println("close positions 获取用户仓位接口，解析出错", v, vUser)
+					continue
+				}
+
+				currentAmount = math.Abs(currentAmount)
+				if floatEqual(currentAmount, 0, 1e-7) {
+					continue
+				}
+
+				var (
+					symbolRel     = v.Symbol
+					tmpQty        float64
+					quantity      string
+					quantityFloat float64
+					orderType     = "MARKET"
+					side          string
+				)
+				if "LONG" == v.PositionSide {
+					side = "SELL"
+				} else if "SHORT" == v.PositionSide {
+					side = "BUY"
+				} else {
+					log.Println("close positions 仓位错误", v, vUser)
+					continue
+				}
+
+				tmpQty = currentAmount // 本次开单数量
+				if !symbolsMap.Contains(symbolRel) {
+					log.Println("close positions，代币信息无效，信息", v, vUser)
+					continue
+				}
+
+				// 精度调整
+				if 0 >= symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision {
+					quantity = fmt.Sprintf("%d", int64(tmpQty))
+				} else {
+					quantity = strconv.FormatFloat(tmpQty, 'f', symbolsMap.Get(symbolRel).(*LhCoinSymbol).QuantityPrecision, 64)
+				}
+
+				quantityFloat, err = strconv.ParseFloat(quantity, 64)
+				if nil != err {
+					log.Println("close positions，数量解析", v, vUser, err)
+					continue
+				}
+
+				if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
+					continue
+				}
+
+				var (
+					binanceOrderRes *binanceOrder
+					orderInfoRes    *orderInfo
+				)
+
+				// 请求下单
+				binanceOrderRes, orderInfoRes, err = requestBinanceOrder(symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
+				if nil != err {
+					log.Println("close positions，执行下单错误，手动：", err, symbolRel, side, orderType, v.PositionSide, quantity, vUser.ApiKey, vUser.ApiSecret)
+				}
+
+				// 下单异常
+				if 0 >= binanceOrderRes.OrderId {
+					log.Println("自定义下单，binance下单错误：", orderInfoRes)
+					continue
+				}
+				log.Println("close, 执行成功：", vUser, v, binanceOrderRes)
 			}
 
-			// 下单异常
-			if 0 >= binanceOrderRes.OrderId {
-				log.Println("自定义下单，binance下单错误：", orderInfoRes)
+		} else if "bybit" == vUser.Plat {
+			var (
+				bybitPisitionsRes *BybitPositionInfoResponse
+			)
+
+			bybitPisitionsRes, err = bybitGetPositionInfo(ctx, users[0].ApiKey, users[0].ApiSecret)
+			if nil != err || nil == bybitPisitionsRes {
 				continue
 			}
-			log.Println("close, 执行成功：", vUser, v, binanceOrderRes)
+
+			for _, v := range bybitPisitionsRes.Result.List {
+				if "" == v.Side || "None" == v.Side {
+					continue
+				}
+
+				// 新增
+				var (
+					currentAmount float64
+				)
+				currentAmount, err = strconv.ParseFloat(v.Size, 64)
+				if nil != err {
+					log.Println("获取用户仓位接口，解析出错")
+					continue
+				}
+
+				if floatEqual(currentAmount, 0, 1e-7) {
+					continue
+				}
+
+				var (
+					symbolRel = v.Symbol
+					quantity  = v.Size
+					side      string
+				)
+				if 1 == v.PositionIdx {
+					side = "Sell"
+				} else if 2 == v.PositionIdx {
+					side = "Buy"
+				} else {
+					log.Println("close positions 仓位错误，bybit", v, vUser)
+					continue
+				}
+
+				var (
+					resOrder *BybitPlaceOrderResponse
+				)
+				resOrder, err = bybitPlaceOrder(ctx, users[0].ApiKey, users[0].ApiSecret, symbolRel, quantity, side, v.PositionIdx)
+				if nil != err {
+					log.Println("bybit 初始化仓位下单错误", err, resOrder)
+				}
+
+				if 0 != resOrder.RetCode {
+					fmt.Println("bybit close position 下单异常：", resOrder)
+				}
+
+				if 0 >= len(resOrder.Result.OrderId) {
+					log.Println("bybit close position 下单异常，订单号错误：", resOrder)
+					continue
+				}
+			}
 		}
 
 		time.Sleep(500 * time.Millisecond)
@@ -2441,6 +2575,190 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 				}
 			}
 		}
+	} else if "bybit" == vTmpUserMap.Plat {
+		var (
+			symbolRel         = symbolMapKey
+			tmpQty            float64
+			quantity          string
+			quantityFloat     float64
+			positionSideOrder int
+			sideOrder         string
+		)
+		if "LONG" == positionSide {
+			positionSideOrder = 1
+			if "BUY" == side {
+				sideOrder = "Buy"
+			} else if "SELL" == side {
+				sideOrder = "Sell"
+			} else {
+				log.Println("自定义下单，无效信息，信息", apiKey, symbol, side, positionSide, num)
+				return 0
+			}
+		} else if "SHORT" == positionSide {
+			positionSideOrder = 2
+			if "BUY" == side {
+				sideOrder = "Buy"
+			} else if "SELL" == side {
+				sideOrder = "Sell"
+			} else {
+				log.Println("自定义下单，无效信息，信息", apiKey, symbol, side, positionSide, num)
+				return 0
+			}
+		} else {
+			log.Println("自定义下单，无效信息，信息", apiKey, symbol, side, positionSide, num)
+			return 0
+		}
+
+		tmpQty = num // 本次开单数量
+		if !symbolsBybitMap.Contains(symbolMapKey) {
+			log.Println("自定义下单，代币信息无效，信息, bybit", apiKey, symbol, side, positionSide, num)
+			return 0
+		}
+
+		// 精度调整
+		tmpQtyStep := symbolsBybitMap.Get(symbolMapKey).(*BybitSymbol).QtyStep
+		tmpFloatQuantity := adjustToStepSize(tmpQty, tmpQtyStep)
+
+		quantity = getStringFromStepSizePrecision(tmpFloatQuantity, tmpQtyStep)
+		quantityFloat, err = strconv.ParseFloat(quantity, 64)
+		if nil != err {
+			log.Println(err)
+			return 0
+		}
+
+		if lessThanOrEqualZero(quantityFloat, 0, 1e-7) {
+			return 0
+		}
+
+		var (
+			resOrder *BybitPlaceOrderResponse
+		)
+
+		if 1 == systemOrder {
+			resOrder, err = bybitPlaceOrder(ctx, vTmpUserMap.ApiKey, vTmpUserMap.ApiSecret, symbolRel, quantity, sideOrder, positionSideOrder)
+			if nil != err {
+				log.Println("bybit 自定义下单，错误", err, resOrder)
+			}
+			if 0 != resOrder.RetCode {
+				fmt.Println("bybit 自定义下单，错误，下单异常：", resOrder)
+				return 0
+			}
+
+			if 0 >= len(resOrder.Result.OrderId) {
+				log.Println("bybit 自定义下单，错误，订单号错误：", resOrder)
+				return 0
+			}
+		}
+
+		var tmpExecutedQty float64
+		tmpExecutedQty = quantityFloat
+
+		if 1 == system {
+			// 不存在新增，这里只能是开仓
+			if !orderMap.Contains(symbolRel + "&" + positionSide + "&" + strUserId) {
+				orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, tmpExecutedQty)
+			} else {
+				// 追加仓位，开仓
+				if "LONG" == positionSide {
+					if "BUY" == side {
+						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
+						d2 := decimal.NewFromFloat(tmpExecutedQty)
+						result := d1.Add(d2)
+
+						var (
+							newRes float64
+							exact  bool
+						)
+						newRes, exact = result.Float64()
+						if !exact {
+							fmt.Println("转换过程中可能发生了精度损失", d1, d2, tmpExecutedQty, orderMap.Get(symbolRel+"&"+positionSide+"&"+strUserId).(float64), newRes)
+						}
+
+						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
+
+						// 跟单人开仓成功，用户的预备仓位清空
+						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
+					} else if "SELL" == side {
+						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
+						d2 := decimal.NewFromFloat(tmpExecutedQty)
+						result := d1.Sub(d2)
+
+						var (
+							newRes float64
+							exact  bool
+						)
+						newRes, exact = result.Float64()
+						if !exact {
+							fmt.Println("转换过程中可能发生了精度损失", d1, d2, tmpExecutedQty, orderMap.Get(symbolRel+"&"+positionSide+"&"+strUserId).(float64), newRes)
+						}
+
+						if lessThanOrEqualZero(newRes, 0, 1e-7) {
+							newRes = 0
+						}
+
+						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
+
+						//  跟单人完全平仓，用户的预备仓位清空
+						if lessThanOrEqualZero(newRes, 0, 1e-7) {
+							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
+						}
+					} else {
+						log.Println("手动，bybit下单，数据存储:", system, apiKey, symbol, side, positionSide, num, resOrder, tmpExecutedQty)
+					}
+
+				} else if "SHORT" == positionSide {
+					if "SELL" == side {
+						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
+						d2 := decimal.NewFromFloat(tmpExecutedQty)
+						result := d1.Add(d2)
+
+						var (
+							newRes float64
+							exact  bool
+						)
+						newRes, exact = result.Float64()
+						if !exact {
+							fmt.Println("转换过程中可能发生了精度损失", d1, d2, tmpExecutedQty, orderMap.Get(symbolRel+"&"+positionSide+"&"+strUserId).(float64), newRes)
+						}
+
+						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
+
+						// 跟单人开仓成功，用户的预备仓位清空
+						orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
+					} else if "BUY" == side {
+						d1 := decimal.NewFromFloat(orderMap.Get(symbolRel + "&" + positionSide + "&" + strUserId).(float64))
+						d2 := decimal.NewFromFloat(tmpExecutedQty)
+						result := d1.Sub(d2)
+
+						var (
+							newRes float64
+							exact  bool
+						)
+						newRes, exact = result.Float64()
+						if !exact {
+							fmt.Println("转换过程中可能发生了精度损失", d1, d2, tmpExecutedQty, orderMap.Get(symbolRel+"&"+positionSide+"&"+strUserId).(float64), newRes)
+						}
+
+						if lessThanOrEqualZero(newRes, 0, 1e-7) {
+							newRes = 0
+						}
+
+						orderMap.Set(symbolRel+"&"+positionSide+"&"+strUserId, newRes)
+
+						//  跟单人完全平仓，用户的预备仓位清空
+						if lessThanOrEqualZero(newRes, 0, 1e-7) {
+							orderMapTmp.Set(symbolRel+"&"+positionSide+"&"+strUserId, float64(0))
+						}
+					} else {
+						log.Println("手动，bybit下单，数据存储:", system, apiKey, symbol, side, positionSide, num, resOrder, tmpExecutedQty)
+					}
+
+				} else {
+					log.Println("手动，bybit下单，数据存储:", system, apiKey, symbol, side, positionSide, num, resOrder, tmpExecutedQty)
+				}
+			}
+		}
+
 	} else {
 		log.Println("初始化，错误用户信息，开仓", vTmpUserMap)
 		return 0
@@ -3231,7 +3549,7 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		"qty":         qty,      // 下单数量
 	}
 
-	log.Println("测试下单信息：", params)
+	//log.Println("测试下单信息：", params)
 	// 发起下单请求
 	resp, err := client.NewUtaBybitServiceWithParams(params).PlaceOrder(ctx)
 	if err != nil {
@@ -3243,7 +3561,7 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 		orderResponse *BybitPlaceOrderResponse
 	)
 
-	log.Println(resp)
+	//log.Println(resp)
 	contractJSON, err = json.Marshal(resp)
 	if err != nil {
 		log.Printf("合约 JSON 序列化失败: %v", err)
@@ -3256,4 +3574,123 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 	}
 
 	return orderResponse, nil
+}
+
+type BybitSetPositionSideResponse struct {
+	RetCode    int         `json:"retCode"`
+	RetMsg     string      `json:"retMsg"`
+	Result     struct{}    `json:"result"`
+	RetExtInfo interface{} `json:"retExtInfo"`
+	Time       int64       `json:"time"`
+}
+
+func bybitSetPositionSide(ctx context.Context, apiK, apiS, symbol string) (*BybitSetPositionSideResponse, string, error) {
+	// 初始化客户端（选择 TESTNET 或 MAINNET）
+	client := bybit.NewBybitHttpClient(
+		apiK,
+		apiS,
+		bybit.WithBaseURL(bybit.MAINNET), // 或者 MAINNET
+	)
+
+	// 构造下单参数
+	params := map[string]interface{}{
+		"category": "linear",
+		"symbol":   symbol,
+		"mode":     3,
+	}
+
+	// 发起下单请求
+	resp, err := client.NewUtaBybitServiceWithParams(params).SwitchPositionMode(ctx)
+	if err != nil {
+		log.Fatalf("设置持仓模式失败: %v", err)
+		return nil, "", err
+	}
+	var (
+		contractJSON  []byte
+		orderResponse *BybitSetPositionSideResponse
+	)
+
+	contractJSON, err = json.Marshal(resp)
+	if err != nil {
+		log.Printf("合约 JSON 序列化失败: %v", err)
+		return nil, string(contractJSON), err
+	}
+
+	if err = json.Unmarshal(contractJSON, &orderResponse); err != nil {
+		log.Printf("合约 JSON 解析失败: %v", err)
+		return nil, string(contractJSON), err
+	}
+
+	return orderResponse, string(contractJSON), nil
+}
+
+type BybitPositionInfoResponse struct {
+	RetCode    int             `json:"retCode"`
+	RetMsg     string          `json:"retMsg"`
+	Result     *PositionResult `json:"result"`
+	RetExtInfo interface{}     `json:"retExtInfo"`
+	Time       int64           `json:"time"`
+}
+
+type PositionResult struct {
+	Category string      `json:"category"`
+	List     []*Position `json:"list"`
+}
+
+type Position struct {
+	Symbol           string `json:"symbol"`
+	Side             string `json:"side"`           // Buy / Sell
+	Size             string `json:"size"`           // 持仓数量
+	EntryPrice       string `json:"entryPrice"`     // 开仓均价
+	Leverage         string `json:"leverage"`       // 杠杆倍数
+	PositionValue    string `json:"positionValue"`  // 持仓价值
+	PositionStatus   string `json:"positionStatus"` // Normal 等状态
+	TakeProfit       string `json:"takeProfit"`
+	StopLoss         string `json:"stopLoss"`
+	TrailingStop     string `json:"trailingStop"`
+	UnrealisedPnl    string `json:"unrealisedPnl"`  // 浮动盈亏
+	CumRealisedPnl   string `json:"cumRealisedPnl"` // 已实现盈亏
+	RiskId           int    `json:"riskId"`
+	PositionIdx      int    `json:"positionIdx"` // 0=双向/1=买/2=卖
+	TradeMode        int    `json:"tradeMode"`   // 0=逐仓/1=全仓
+	AutoAddMargin    int    `json:"autoAddMargin"`
+	AdlRankIndicator int    `json:"adlRankIndicator"`
+	UpdatedTime      string `json:"updatedTime"`
+}
+
+func bybitGetPositionInfo(ctx context.Context, apiK, apiS string) (*BybitPositionInfoResponse, error) {
+	client := bybit.NewBybitHttpClient(
+		apiK,
+		apiS,
+		bybit.WithBaseURL(bybit.MAINNET),
+	)
+
+	params := map[string]interface{}{
+		"category": "linear", // 线性合约
+		"limit":    200,
+	}
+
+	resp, err := client.NewUtaBybitServiceWithParams(params).GetPositionList(ctx)
+	if err != nil {
+		log.Printf("查询持仓失败: %v", err)
+		return nil, err
+	}
+
+	var (
+		jsonBytes   []byte
+		positionRes *BybitPositionInfoResponse
+	)
+
+	jsonBytes, err = json.Marshal(resp)
+	if err != nil {
+		log.Printf("序列化 JSON 失败: %v", err)
+		return nil, err
+	}
+
+	if err = json.Unmarshal(jsonBytes, &positionRes); err != nil {
+		log.Printf("反序列化 JSON 失败: %v", err)
+		return nil, err
+	}
+
+	return positionRes, nil
 }

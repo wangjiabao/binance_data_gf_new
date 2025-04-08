@@ -26,7 +26,7 @@ type (
 		// CreateUser set user num
 		CreateUser(ctx context.Context, address, apiKey, apiSecret, plat string, needInit uint64, num float64) error
 		// SetPositionSide set position side
-		SetPositionSide(apiKey, apiSecret string) (uint64, string)
+		SetPositionSide(ctx context.Context, plat, apiKey, apiSecret string) (uint64, string)
 		// SetSystemUserNum set user num
 		SetSystemUserNum(ctx context.Context, apiKey string, num float64) error
 		// GetApiStatus get user api status
@@ -37,8 +37,8 @@ type (
 		SetUseNewSystem(ctx context.Context, apiKey string, useNewSystem uint64) error
 		// GetSystemUserPositions get user positions
 		GetSystemUserPositions(ctx context.Context, apiKey string) map[string]float64
-		// GetBinanceUserPositions get binance user positions
-		GetBinanceUserPositions(ctx context.Context, apiKey string) map[string]string
+		// GetPlatUserPositions get Plat user positions
+		GetPlatUserPositions(ctx context.Context, apiKey string) map[string]string
 		// CloseBinanceUserPositions close binance user positions
 		CloseBinanceUserPositions(ctx context.Context) uint64
 		// SetSystemUserPosition set user positions

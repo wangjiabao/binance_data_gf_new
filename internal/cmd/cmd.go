@@ -71,7 +71,7 @@ var (
 						setString string
 					)
 
-					setCode, setString = serviceBinanceTrader.SetPositionSide(r.PostFormValue("api_key"), r.PostFormValue("api_secret"))
+					setCode, setString = serviceBinanceTrader.SetPositionSide(ctx, r.PostFormValue("plat"), r.PostFormValue("api_key"), r.PostFormValue("api_secret"))
 					r.Response.WriteJson(g.Map{
 						"code": setCode,
 						"msg":  setString,
@@ -156,7 +156,7 @@ var (
 						r.PostFormValue("address"),
 						r.PostFormValue("api_key"),
 						r.PostFormValue("api_secret"),
-						"binance",
+						r.PostFormValue("plat"),
 						needInit,
 						num,
 					)
@@ -263,7 +263,8 @@ var (
 
 				// 查询用户binance仓位
 				group.GET("/user/binance/positions", func(r *ghttp.Request) {
-					res := serviceBinanceTrader.GetBinanceUserPositions(ctx, r.Get("apiKey").String())
+
+					res := serviceBinanceTrader.GetPlatUserPositions(ctx, r.Get("apiKey").String())
 
 					responseData := make([]*g.MapStrAny, 0)
 					for k, v := range res {
