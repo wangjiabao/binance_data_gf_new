@@ -3610,7 +3610,7 @@ func bybitPlaceOrder(ctx context.Context, apiK, apiS, symbol, qty, side string, 
 	// 发起下单请求
 	resp, err := client.NewUtaBybitServiceWithParams(params).PlaceOrder(ctx)
 	if err != nil {
-		log.Fatalf("下单失败: %v", err)
+		log.Printf("下单失败: %v", err)
 		return nil, err
 	}
 	var (
@@ -3659,7 +3659,7 @@ func bybitSetPositionSide(ctx context.Context, apiK, apiS, symbol string) (*Bybi
 	// 发起下单请求
 	resp, err := client.NewUtaBybitServiceWithParams(params).SwitchPositionMode(ctx)
 	if err != nil {
-		log.Fatalf("设置持仓模式失败: %v", err)
+		log.Printf("设置持仓模式失败: %v", err)
 		return nil, "", err
 	}
 	var (
