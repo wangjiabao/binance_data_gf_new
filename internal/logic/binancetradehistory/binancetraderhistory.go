@@ -2329,7 +2329,7 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 				bybitPisitionsRes *BybitPositionInfoResponse
 			)
 
-			bybitPisitionsRes, err = bybitGetPositionInfo(ctx, users[0].ApiKey, users[0].ApiSecret)
+			bybitPisitionsRes, err = bybitGetPositionInfo(ctx, vUser.ApiKey, vUser.ApiSecret)
 			if nil != err || nil == bybitPisitionsRes {
 				continue
 			}
@@ -2379,7 +2379,7 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 				var (
 					resOrder *BybitPlaceOrderResponse
 				)
-				resOrder, err = bybitPlaceOrder(ctx, users[0].ApiKey, users[0].ApiSecret, symbolRel, quantity, side, v.PositionIdx, tmpOrderIdStr)
+				resOrder, err = bybitPlaceOrder(ctx, vUser.ApiKey, vUser.ApiSecret, symbolRel, quantity, side, v.PositionIdx, tmpOrderIdStr)
 				if nil != err {
 					log.Println("bybit 初始化仓位下单错误", err, resOrder)
 				}
