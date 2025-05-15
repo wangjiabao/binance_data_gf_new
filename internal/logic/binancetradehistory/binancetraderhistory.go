@@ -567,6 +567,8 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 
 					//  这里只能是，跟单人开仓，用户的预备仓位清空
 					orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
+
+					time.Sleep(50 * time.Millisecond)
 				} else if "bybit" == vTmpUserMap.Plat {
 					if !symbolsBybitMap.Contains(tmpInsertData.Symbol) {
 						log.Println("新增用户，代币信息无效，信息，bybit", tmpInsertData, vTmpUserMap)
@@ -640,6 +642,11 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 						log.Println("bybit 初始化仓位下单错误", err, resOrder)
 					}
 
+					if nil == resOrder {
+						log.Println("bybit 初始化仓位下单错误，没有返回结果", err, resOrder)
+						continue
+					}
+
 					var tmpExecutedQty float64
 					tmpExecutedQty = quantityFloat
 					if 0 != resOrder.RetCode {
@@ -687,6 +694,8 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 
 					//  这里只能是，跟单人开仓，用户的预备仓位清空
 					orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
+
+					time.Sleep(50 * time.Millisecond)
 				} else {
 					log.Println("新增用户，交易员信息无效了，平台错误，信息", vTmpUserMap)
 					continue
@@ -1348,7 +1357,12 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						)
 						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpInsertData.Symbol, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 						if nil != err {
-							log.Println("bybit 初始化仓位下单错误", err, resOrder)
+							log.Println("bybit 仓位下单错误", err, resOrder)
+						}
+
+						if nil == resOrder {
+							log.Println("bybit 仓位下单错误，没有返回结果", err, resOrder)
+							return
 						}
 
 						var tmpExecutedQty float64
@@ -1670,7 +1684,12 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 						)
 						resOrder, err = bybitPlaceOrder(ctx, tmpUser.ApiKey, tmpUser.ApiSecret, tmpUpdateData.Symbol, quantity, sideOrder, positionSideOrder, tmpOrderIdStr)
 						if nil != err {
-							log.Println("bybit 初始化仓位下单错误", err, resOrder)
+							log.Println("bybit 仓位下单错误", err, resOrder)
+						}
+
+						if nil == resOrder {
+							log.Println("bybit 仓位下单错误，没有返回结果", err, resOrder)
+							return
 						}
 
 						tmpExecutedQty = quantityFloat
@@ -2381,7 +2400,12 @@ func (s *sBinanceTraderHistory) CloseBinanceUserPositions(ctx context.Context) u
 				)
 				resOrder, err = bybitPlaceOrder(ctx, vUser.ApiKey, vUser.ApiSecret, symbolRel, quantity, side, v.PositionIdx, tmpOrderIdStr)
 				if nil != err {
-					log.Println("bybit 初始化仓位下单错误", err, resOrder)
+					log.Println("bybit 仓位下单错误", err, resOrder)
+				}
+
+				if nil == resOrder {
+					log.Println("bybit 仓位下单错误，没有返回结果", err, resOrder)
+					continue
 				}
 
 				if 0 != resOrder.RetCode {
@@ -2694,6 +2718,12 @@ func (s *sBinanceTraderHistory) SetSystemUserPosition(ctx context.Context, syste
 			if nil != err {
 				log.Println("bybit 自定义下单，错误", err, resOrder)
 			}
+
+			if nil == resOrder {
+				log.Println("bybit 仓位下单错误，没有返回结果", err, resOrder)
+				return 0
+			}
+
 			if 0 != resOrder.RetCode {
 				fmt.Println("bybit 自定义下单，错误，下单异常：", resOrder)
 				return 0
