@@ -1139,9 +1139,7 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 							if globalUsers.Contains(vUsers.Id) {
 								globalUsers.Set(vUsers.Id, vUsers)
 							}
-							globalUsers.Set(vUsers.Id, vUsers)
 						}
-
 					}
 				}
 			} else if lessThanOrEqualZero(lastPositionData.PositionAmount, tmpUpdateData.PositionAmount, 1e-7) {
