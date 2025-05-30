@@ -697,6 +697,7 @@ func (s *sBinanceTraderHistory) InsertGlobalUsers(ctx context.Context) {
 					//  这里只能是，跟单人开仓，用户的预备仓位清空
 					orderMapTmp.Set(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, float64(0))
 
+					log.Println("初始化，现有仓位：", tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId, orderMap.Get(tmpInsertData.Symbol+"&"+positionSide+"&"+strUserId))
 					time.Sleep(50 * time.Millisecond)
 				} else {
 					log.Println("新增用户，交易员信息无效了，平台错误，信息", vTmpUserMap)
