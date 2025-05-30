@@ -125,6 +125,8 @@ var (
 
 	symbolsMap      = gmap.NewStrAnyMap(true)
 	symbolsBybitMap = gmap.NewStrAnyMap(true)
+
+	locKOrder = gmap.NewStrAnyMap(true)
 )
 
 // UpdateCoinInfo 初始化信息
@@ -1093,6 +1095,55 @@ func (s *sBinanceTraderHistory) PullAndOrderNewGuiTu(ctx context.Context) {
 		}
 
 		log.Printf("程序拉取部分，开始 %v, 拉取时长: %v, 统计更新时长: %v\n", start, timePull, time.Since(start))
+
+		// 闪烁检测
+		tmpNow := start.Unix()
+		for _, vInsertData := range orderInsertData {
+			locKOrder.Set(vInsertData.Symbol+"&"+vInsertData.PositionSide, tmpNow)
+		}
+
+		// 同一次执行时，业务上，同一仓位只会存在于insert或update中的一个
+		for _, vUpdateData := range orderUpdateData {
+			tmpUpdateData := vUpdateData
+			if _, ok := binancePositionMapCompare[vUpdateData.Symbol+vUpdateData.PositionSide]; !ok {
+				continue
+			}
+			lastPositionData := binancePositionMapCompare[vUpdateData.Symbol+vUpdateData.PositionSide]
+
+			// 判断是否闪烁
+			if lessThanOrEqualZero(tmpUpdateData.PositionAmount, 0, 1e-7) {
+				log.Println("判断闪烁，完全平仓：", tmpUpdateData)
+
+				if locKOrder.Contains(tmpUpdateData.Symbol + "&" + tmpUpdateData.PositionSide) {
+					lastOrderT := locKOrder.Get(tmpUpdateData.Symbol + "&" + tmpUpdateData.PositionSide).(int64)
+					if (tmpNow - 30) < lastOrderT {
+						fmt.Println("可能抖动", tmpUpdateData, lastOrderT, tmpNow)
+						// 修改
+						_, err = g.Model("user").Ctx(ctx).Data("open_status", 4).Where("id>=?", 1).Update()
+						if nil != err {
+							log.Println("可能抖动，暂停：", err)
+						}
+
+						var (
+							users []*entity.User
+						)
+						err = g.Model("user").Ctx(ctx).
+							Where("api_status=?", 1).
+							Scan(&users)
+						if nil != err {
+							log.Println("新增用户，数据库查询错误：", err)
+						}
+
+						for _, vUsers := range users {
+							globalUsers.Set(vUsers.Id, vUsers)
+						}
+					}
+				}
+			} else if lessThanOrEqualZero(lastPositionData.PositionAmount, tmpUpdateData.PositionAmount, 1e-7) {
+				// 追加仓位时候记录时间
+				locKOrder.Set(tmpUpdateData.Symbol+"&"+tmpUpdateData.PositionSide, tmpNow)
+			}
+		}
 
 		wg := sync.WaitGroup{}
 		// 遍历跟单者
